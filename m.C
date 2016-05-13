@@ -7,6 +7,45 @@ double*** gen_rand_matrix(int n, double epsilon);
 
 double getnorm(double* R,double* I,int n, int col);
 
+double getdet(double* R, double *I, int n);
+
+double minor(double* R, double* I, int n, int row, int column);
+
+double** minor(double **M, int n, int row, int column)
+{
+  double **minor=(double**)malloc(2*sizeof(double*));
+  minor[1]=(double*)malloc((n-1)*(n-1)*sizeof(double));
+  minor[0]=(double*)malloc((n-1)*(n-1)*sizeof(double));
+  int newstart=0;
+  for(int i=0; i<(n-1)*(n-1); i++)
+    {
+      for(int j=newstart; j<n*n; j++)
+	{
+	  if(j%n==column || j/n==row)
+	    {
+	      continue;
+	    }
+	minor[1][i]=M[1][j];
+	minor[0][i]=M[0][j];
+	newstart=j+1;
+	break;
+	}
+    }
+  return minor;
+}
+
+double getdet(double** M, int n)
+{
+  double determinant=0;
+  if(n>3)
+    {
+      for{i=0; i<n; i++}
+      {
+	determinant+=pow(-1,i%n)*getdet()
+      }
+    }
+}
+
 double getnorm(double* R,double* I,int n, int col)
 {
   double rsum=0;
@@ -122,6 +161,16 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  ////normalize the resulting column
 	  printf("normalize the result\n");
 	  double rsum=0;
+	  //get determinant, divide it out
+	  double** M=(double**)malloc(2*sizeof(double*));
+	  double* M[0]=(double*)malloc(n*n*sizeof(double));
+	  double* M[1]=(double*)malloc(n*n*sizeof(double));
+	  for(ic=0; ic<n*n; ic++)
+	    {
+	      M[0][ic]=R[ic];
+	      M[1][ic]=I[ic];
+	    }
+	  double *determinant=(double *)malloc(sizeof(double));
 	  //get norm
 	  double *sum=(double *)malloc(sizeof(double));
 	  *sum=getnorm(R,I,n,col);
