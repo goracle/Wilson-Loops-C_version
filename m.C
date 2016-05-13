@@ -34,16 +34,23 @@ double** minor(double **M, int n, int row, int column)
   return minor;
 }
 
-double getdet(double** M, int n)
+double* getdet(double** M, int n)
 {
-  double determinant=0;
-  if(n>3)
+  double determinant_i=0;
+  double determinant_r=0;
+  if(n>2)
     {
       for{i=0; i<n; i++}
       {
-	determinant+=pow(-1,i%n)*getdet()
+	determinant+=pow(-1,i%n)*getdet(minor(M,n-1,0,i),n-1)
       }
     }
+  else
+    {
+      determinant_i+=M[0][0]*M[0][4]-M[1][0]*M[1][4]-(M[0][2]*M[0][3]-M[1][2]*M[1][3])
+      determinant_r+=M[0][0]*M[0][4]-M[1][0]*M[1][4]-(M[0][2]*M[0][3]-M[1][2]*M[1][3])
+    }
+  return determinant;
 }
 
 double getnorm(double* R,double* I,int n, int col)
