@@ -3,19 +3,23 @@
 #include <time.h>
 #include <math.h>
 
-double*** gen_rand_matrix(int n, double epsilon);
+double** minors(double **M, int n, int row, int column);
+
+double* getdet(double** M,int n);
+
+double* times(double* z, double* y, double* result);
 
 double getnorm(double* R,double* I,int n, int col);
 
-double getdet(double* R, double *I, int n);
+double*** gen_rand_matrix(int n, double epsilon);
 
-double minor(double* R, double* I, int n, int row, int column);
-
-double** minor(double **M, int n, int row, int column)
+double** minors(double **M, int n, int row, int column)
 {
-  double **minor=(double**)malloc(2*sizeof(double*));
-  minor[1]=(double*)malloc((n-1)*(n-1)*sizeof(double));
-  minor[0]=(double*)malloc((n-1)*(n-1)*sizeof(double));
+  double **minorr=(double**)malloc((n-1)*(n-1)*sizeof(double*));
+  for(int g=0; g<(n-1)*(n-1); g++)
+    {
+      *(minorr+g)=(double*)malloc(2*sizeof(double));
+    }
   int newstart=0;
   for(int i=0; i<(n-1)*(n-1); i++)
     {
@@ -25,32 +29,54 @@ double** minor(double **M, int n, int row, int column)
 	    {
 	      continue;
 	    }
-	minor[1][i]=M[1][j];
-	minor[0][i]=M[0][j];
-	newstart=j+1;
-	break;
+	  minorr[i][1]=M[j][1];
+	  minorr[i][0]=M[j][0];
+	  newstart=j+1;
+	  break;
 	}
     }
-  return minor;
+  return minorr;
 }
 
-double* getdet(double** M, int n)
+double* times(double* z, double* y)
 {
-  double determinant_i=0;
-  double determinant_r=0;
-  if(n>2)
+  double* result=(double *)malloc(2*sizeof(double));
+  result[0]=0;
+  result[1]=0;
+  double y0=y[0];
+  double z0=z[0];
+  result[0]+=z[0]*y[0]-z[1]*y[1];
+  result[1]+=z[0]*y[1]+z[1]*y[0];
+  return result;
+}
+
+double* getdet(double** M,int n)
+{
+  double* temp_fin=(double*)malloc(2*sizeof(double));
+  temp_fin[0]=0;
+  temp_fin[1]=0;
+  for(int column=0; column<n; column++)
     {
-      for{i=0; i<n; i++}
-      {
-	determinant+=pow(-1,i%n)*getdet(minor(M,n-1,0,i),n-1)
-      }
+      if(n==2)
+	{
+	  double* t=times(M[0],M[3]);
+	  temp_fin[0]=t[0];
+	  temp_fin[1]=t[1];
+	  free(t);
+	}
+      else
+	{
+	  double y=-1.0;
+	  double **mins=minors(M,n,0,column);
+	  double* subdet=getdet(mins,n-1);
+	  double *x=times(M[column],subdet);
+	  free(mins);
+	  temp_fin[0]+=pow(y,column)*x[0];
+	  temp_fin[1]+=pow(y,column)*x[1];
+	  free(x);
+	}
     }
-  else
-    {
-      determinant_i+=M[0][0]*M[0][4]-M[1][0]*M[1][4]-(M[0][2]*M[0][3]-M[1][2]*M[1][3])
-      determinant_r+=M[0][0]*M[0][4]-M[1][0]*M[1][4]-(M[0][2]*M[0][3]-M[1][2]*M[1][3])
-    }
-  return determinant;
+  return temp_fin;
 }
 
 double getnorm(double* R,double* I,int n, int col)
@@ -58,11 +84,11 @@ double getnorm(double* R,double* I,int n, int col)
   double rsum=0;
   double sum;
   for(int row=0; row<n; row++)
-	    {
-	      printf("(a,b)=%.6f+I %.6f\n", (*(R+n*row+col)),*(I+n*row+col));
-	      rsum+=pow((*(R+n*row+col)),2)+pow((*(I+n*row+col)),2);
-	      printf("quantity we are adding=%.6f\n",pow((*(R+n*row+col)),2)+pow((*(I+n*row+col)),2));
-	    }
+    {
+      printf("(a,b)=%.6f+I %.6f\n", (*(R+n*row+col)),*(I+n*row+col));
+      rsum+=pow((*(R+n*row+col)),2)+pow((*(I+n*row+col)),2);
+      printf("quantity we are adding=%.6f\n",pow((*(R+n*row+col)),2)+pow((*(I+n*row+col)),2));
+    }
   sum=pow(rsum,.5);
   return sum;
 }
@@ -168,16 +194,6 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  ////normalize the resulting column
 	  printf("normalize the result\n");
 	  double rsum=0;
-	  //get determinant, divide it out
-	  double** M=(double**)malloc(2*sizeof(double*));
-	  double* M[0]=(double*)malloc(n*n*sizeof(double));
-	  double* M[1]=(double*)malloc(n*n*sizeof(double));
-	  for(ic=0; ic<n*n; ic++)
-	    {
-	      M[0][ic]=R[ic];
-	      M[1][ic]=I[ic];
-	    }
-	  double *determinant=(double *)malloc(sizeof(double));
 	  //get norm
 	  double *sum=(double *)malloc(sizeof(double));
 	  *sum=getnorm(R,I,n,col);
@@ -197,10 +213,60 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  printf("new norm=%.6f\n",getnorm(R,I,n,col));
 	  free(sum);
 	}
+      //get determinant
+      double** M=(double**)malloc(n*n*sizeof(double*));
+      for(int g=0; g<n*n; g++)
+	{
+	  *(M+g)=(double*)malloc(2*sizeof(double));
+	}
+      for(int ic=0; ic<n*n; ic++)
+	{
+	  M[ic][0]=R[ic];
+	  M[ic][1]=I[ic];
+	}
+      double* determinant=getdet(M,n);
+      printf("determinant=%.6f+i %.6f\n",determinant[0],determinant[1]);
+      double *determinant_star=(double*)malloc(2*sizeof(double));
+      determinant_star[0]=determinant[0];
+      determinant_star[1]=-1*determinant[1];
+      double powT=-1.0/n;
+      double normdet=pow(times(determinant,determinant_star)[0],powT);
+      double phase;
+      if(determinant[0]!=0)
+	{
+	  phase=-1.0*acos(determinant[0]/normdet)/n;
+	}
+      else if(determinant[1]!=0)
+	{
+	  phase=-1.0*asin(determinant[1]/normdet)/n;
+	}
+      else
+	{
+	  printf("determinant=0, skipping this matrix\n");
+	  i--;
+	  continue;
+	}
+      double *c=(double*)malloc(2*sizeof(double));
+      c[0]=normdet*cos(phase);
+      c[1]=normdet*sin(phase);
+      printf("c=(%.6f,%.6f)",c[0],c[1]);
+      for(int d=0; d<n*n; d++)
+	{
+	  M[d]=times(M[d],c);
+	}
+
+     double* determinant2=getdet(M,n);
+     printf("new determinant=%.6f+i %.6f\n",determinant2[0],determinant2[1]);
+     free(determinant2);
+     free(determinant);
+
+     free(c);
+ 
+
       printf("\nmarker\n");
-      printf("%.6f + i%.6f, %.6f + i%.6f, %.6f + i%.6f \n", R[0],I[0],R[1],I[1],R[2],I[2]);
-      printf("%.6f + i%.6f, %.6f + i%.6f, %.6f + i%.6f \n", R[3],I[3],R[4],I[4],R[5],I[5]);
-      printf("%.6f + i%.6f, %.6f + i%.6f, %.6f + i%.6f \n", R[6],I[6],R[7],I[7],R[8],I[8]);
+      printf("%.6f + i %.6f, %.6f + i %.6f, %.6f + i %.6f \n", R[0],I[0],R[1],I[1],R[2],I[2]);
+      printf("%.6f + i %.6f, %.6f + i %.6f, %.6f + i %.6f \n", R[3],I[3],R[4],I[4],R[5],I[5]);
+      printf("%.6f + i %.6f, %.6f + i %.6f, %.6f + i %.6f \n", R[6],I[6],R[7],I[7],R[8],I[8]);
       //store the result
       for(int j=0;j<2;j++)
 	{
@@ -233,11 +299,40 @@ int main()
   int Ncor=50;
   int Ncf=100;
   //dimension of matrices (nxn)
-  int n=3;
+  int n=2;
   
   double ***container=gen_rand_matrix(n,epsilon);
 
-  printf("imaginary part of 3,3 element %.6f\n",container[99][1][8]);
+  printf("\n imaginary part of 3,3 element %.6f\n",container[99][1][8]);
+
+  free(container);
+
+  double** M=(double**)malloc(n*n*sizeof(double*));
+
+
+  for(int g=0; g<n*n; g++)
+    {
+      M[g]=(double*)malloc(2*sizeof(double));
+    }
+  printf("seg\n");
+  int j=0;
+  for(double i=0; i<n*n; i+=1.0)
+    {
+      printf("seg(%d)\n",j);
+      M[j][0]=i;
+      j++;
+    }
+  double **m=minors(M,n,1,1);
+
+  for(double i=0; i<(n-1)*(n-1); i+=1.0)
+    {
+      int k=(int)i;
+      printf("m[%d]=%d\n",i,m[k][0]); 
+    }
+  free(m);
+  free(M);
+
+  
   //thermalize the lattice 10*Ncor times
 
   //calculate the action, store it
