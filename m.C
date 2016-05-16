@@ -5,6 +5,8 @@
 
 double** minors(double **M, int n, int row, int column);
 
+int* baseconv(int start, int basefrom, int baseto);
+
 double* getdet(double** M,int n);
 
 double* times(double* z, double* y, double* result);
@@ -12,6 +14,20 @@ double* times(double* z, double* y, double* result);
 double getnorm(double* R,double* I,int n, int col);
 
 double*** gen_rand_matrix(int n, double epsilon);
+
+double**** initialize_lat(int d, int spacing, int n);
+
+double calculate_S(double ****lattice, double beta, int d, int spacing, int n);
+
+int* findcoord(int d, int spacing, int coor, int* x);
+
+double** dagger(double** M, int n);
+
+double trace_real(double **M, int n);
+
+double **Times(double** M, double** N, double** res, int n);
+
+double plaq(double ****lattice, int coor, int nu, int mu, int n, int spacing);
 
 double** minors(double **M, int n, int row, int column)
 {
@@ -291,12 +307,26 @@ int main()
   int Ncf=100;
   //dimension of matrices (nxn)
   int n=3;
+  //dimensions of lattice d^4: 4x4x4x4 lattice
+  int d=4;
+  //spacing=L/a
+  int spacing=8;
+  
+  
   
   double ***container=gen_rand_matrix(n,epsilon);
 
   printf("\n imaginary part of 3,3 element %.6f\n",container[99][1][8]);
 
-  free(container);
+  //initialize the lattice
+  double**** lattice=initialize_lat(d,spacing,n);
+  double S=calculate_S(lattice, beta, d, spacing,n);
+
+  printf("Well, S_init=%.6f\n",S);
+  //indices are x,y,z,t,direction,matrix index, real part, imaginary part
+  //loop over x
+
+
 
     
   //thermalize the lattice 10*Ncor times
@@ -310,7 +340,202 @@ int main()
   ///update the link
 
   //calculate the action
-  
-  
+  free(container);
   return 0;
+}
+
+double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
+{
+  double S=0;
+  int* x=(int*)malloc(d*sizeof(int));
+  int pow=1;
+  for(int k=0; k<d; k++)
+    {
+      pow*=(spacing+1);
+      x[d]=0;
+    }
+  for(int coor=0; coor<pow; coor++)
+    {
+      x=findcoord(d, spacing, coor, x);
+      for(int nu=0; nu<d; nu++)
+	{
+	  if(x[nu]==spacing)
+	    continue;
+	  for(int mu=nu+1; mu<d; mu++)
+	    {
+	      if(x[mu]==spacing)
+		  continue;
+	      S+=-beta*plaq(lattice, coor, nu, mu, n, spacing);
+	    }
+	}
+    }
+  free(x);
+  return S;
+}
+
+//coordinate,direction of link, index of nxn matrix, real/imag part
+double plaq(double ****lattice, int coor, int nu, int mu, int n, int spacing)
+{
+  int nua=1;
+  int mua=1;
+  for(int i=0; i<nu; i++)
+    {
+      nua*=spacing+1;
+    }
+  for(int i=0; i<mu; i++)
+    {
+      mua*=spacing+1;
+    }
+  double **res1=(double**)malloc(n*n*sizeof(double*));
+  double **res2=(double**)malloc(n*n*sizeof(double*));
+  double **res3=(double**)malloc(n*n*sizeof(double*));
+  for(int i=0; i<n*n; i++)
+    {
+      res1[i]=(double*)malloc(2*sizeof(double));
+      res2[i]=(double*)malloc(2*sizeof(double));
+      res3[i]=(double*)malloc(2*sizeof(double));
+      res1[i][0]=0;
+      res1[i][1]=0;
+      res2[i][0]=0;
+      res2[i][1]=0;
+      res3[i][0]=0;
+      res3[i][1]=0;
+    }
+  res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
+  res2=Times(dagger(lattice[coor+nua][mu], n),dagger(lattice[coor][nu], n),res2,n);
+  double result=1.0/3.0*trace_real(Times(res1,res2,res3,n),n);
+  free(res1);
+  free(res2);
+  free(res3);
+  return result;
+}
+
+double **Times(double** M, double** N, double** res, int n)
+{
+  double ***A=(double***)malloc(n*sizeof(double**));
+  double ***B=(double***)malloc(n*sizeof(double**));
+  for(int i=0; i<n; i++)
+    {
+      A[i]=(double**)malloc(n*sizeof(double*));
+      B[i]=(double**)malloc(n*sizeof(double*));
+      for(int j=0; j<n; j++)
+	{
+	  B[i][j]=(double*)malloc(2*sizeof(double));
+	  A[i][j]=(double*)malloc(2*sizeof(double));
+	  A[i][j][0]=0;
+	  B[i][j][0]=0;
+	  A[i][j][1]=0;
+	  B[i][j][1]=0;
+	}
+    }
+  for(int k=0; k<n*n; k++)
+    {
+      int i=k/n; 
+      int j=k-i*n;
+      A[i][j][0]=M[k][0];
+      A[i][j][1]=M[k][1];
+      B[i][j][0]=N[k][0];
+      B[i][j][1]=N[k][1];
+    }
+  for(int i=0; i<n; i++)
+    {
+      for(int j=0; j<n; j++)
+	{
+	  for(int k=0; k<n; k++)
+	    {
+	      res[i*n+j][0]+=times(A[i][k],B[k][j])[0]; 
+	      res[i*n+j][1]+=times(A[i][k],B[k][j])[1]; 
+	    } 
+	}
+    }
+  free(A);
+  free(B);
+  return res;
+}
+
+double trace_real(double **M, int n)
+{
+  double sum=0;
+  for(int k=0; k<n*n; k+=n+1)
+    {
+      sum+=M[k][0];
+    }
+  return sum;
+}
+
+double** dagger(double** M, int n)
+{
+  for(int k=0; k<n*n; k++)
+    {
+      int i=k/n;
+      int j=k-i*n;
+      int kprime=j*n+i;
+      if(kprime==k)
+	M[k][1]*=-1;
+      else if(kprime>k)
+	{
+	  double temp0=M[k][0];
+	  double temp1=M[k][1];
+	  M[k][0]=M[kprime][0];
+	  M[k][1]=-1*M[kprime][1];
+	  M[kprime][0]=temp0;
+	  M[kprime][1]=-1*temp1;
+	}
+      else
+	break;
+    }
+  return M;
+}
+
+double**** initialize_lat(int d, int spacing, int n)
+{
+  int pow=1;
+  for(int k=0; k<d; k++)
+    {
+      pow*=spacing+1;
+    }
+  double**** lattice=(double****)malloc(pow*sizeof(double***));
+  //coordinate,direction of link, index of nxn matrix, real/imag part
+  int* x=(int*)malloc(d*sizeof(int));
+  for(int coor=0; coor<pow; coor++)
+    {
+      lattice[coor]=(double***)malloc(d*sizeof(double**));
+      for(int dir=0; dir<d; dir++)
+	{
+	  lattice[coor][dir]=(double**)malloc(n*n*sizeof(double*));
+	  for(int index=0; index<n*n; index++)
+	    {
+	      x=findcoord(d, spacing, coor, x);
+	      lattice[coor][dir][index]=(double*)malloc(2*sizeof(double));
+	      //below: first condition sees if we are on diagonal
+	      //second condition tests if we are on the border of the lattice
+	      //in which case we create no dangling links
+	      if(index%(n+1)==0 && x[dir]!=(spacing))
+		{
+		  lattice[coor][dir][index][0]=1;
+		  lattice[coor][dir][index][1]=0;
+		}
+	      else
+		{
+		  lattice[coor][dir][index][0]=0;
+		  lattice[coor][dir][index][1]=0;
+		}
+	    }
+	}
+    }
+  free(x);
+  return lattice;
+}
+
+int* findcoord(int d, int spacing, int coor, int* x)
+{
+  int temp=0;
+  int coors=coor;
+  while(coors>=0 && temp<d)
+    {
+      x[temp]=coors-(coors/(1+spacing))*(spacing+1);
+      coors/=(spacing+1);
+      temp++;
+    }
+  return x;
 }
