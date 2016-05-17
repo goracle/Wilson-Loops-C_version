@@ -29,6 +29,8 @@ double **Times(double** M, double** N, double** res, int n);
 
 double plaq(double ****lattice, int coor, int nu, int mu, int n, int spacing);
 
+double**** update(double**** lattice, double*** container, int n, int d, int spacing, double beta);
+
 double** minors(double **M, int n, int row, int column)
 {
   double **minorr=(double**)malloc((n-1)*(n-1)*sizeof(double*));
@@ -330,19 +332,166 @@ int main()
 
     
   //thermalize the lattice 10*Ncor times
+  for(int i=0; i<10*Ncor; i++)
+    {
+      update(lattice,container,n,d,spacing,beta);
+      printf("here we are\n");
+    }
+
 
   //calculate the action, store it
-
+  double avgS=0;
   //update the links Ncor times, save S, repeat Ncf-1 times
+  for(int i=0; i<Ncf; i++)
+    {
+      avgS+=calculate_S(lattice, beta, d, spacing,n)/Ncf;
+      for(int j=0; j<Ncor; j++)
+	update(lattice,container,n,d,spacing,beta);
+    }
 
+  printf("\n average S=%.6f\n",avgS);
   //loop over links
 
   ///update the link
 
   //calculate the action
+  free(lattice);
   free(container);
   return 0;
 }
+
+
+
+double**** update(double**** lattice, double*** container, int n, int d, int spacing, double beta)
+{
+  int* x=(int*)malloc(d*sizeof(int));
+  int pow=1;
+  for(int k=0; k<d; k++)
+    {
+      pow*=(spacing+1);
+      x[d]=0;
+    }
+  for(int coor=0; coor<pow; coor++)
+    {
+      x=findcoord(d, spacing, coor, x);
+      for(int mu=0; mu<d; mu++)
+	{
+	  if(x[mu]==spacing)
+	    continue;
+	  //compute the staples
+	  int nstap=0;
+	  double ***staples=(double***)malloc(nstap*sizeof(double**));
+	  int mua=1;
+	  for(int i=0; i<mu; i++)
+	    {
+	      mua*=spacing+1;
+	    }
+	  for(int nu=0; nu<d; nu++)
+	    {
+	      int stap_start=nstap;
+	      if(mu==nu)
+		continue;
+	      int nua=1;
+	      for(int j=0; j<nu; j++)
+		{
+		  nua*=spacing+1;
+		}
+	      if(x[nu]!=spacing && x[nu]!=0)
+		nstap++;
+	      nstap++;
+	      printf("coor=%d\n",coor);
+	      //increase the size of staples
+	      staples=(double***)realloc(staples,nstap*sizeof(double**));
+	      for(int j=stap_start; j<nstap; j++)
+		{
+		  double **res1=(double**)malloc(n*n*sizeof(double*));
+		  double **res2=(double**)malloc(n*n*sizeof(double*));
+		  for(int i=0; i<n*n; i++)
+		    {
+		      res1[i]=(double*)calloc(2,sizeof(double));
+		      res2[i]=(double*)calloc(2,sizeof(double));
+		    }
+
+		  staples[j]=(double**)malloc(n*n*sizeof(double*));
+		  if(x[nu]==spacing)
+		    staples[j]=Times(Times(dagger(lattice[coor+mua-nua][nu],n),dagger(lattice[coor-nua][mu],n),res1,n),lattice[coor-nua][nu],res2,n);
+		  if(x[nu]==0)
+		    staples[j]=Times(lattice[coor+mua][nu],Times(dagger(lattice[coor+nua][mu],n),dagger(lattice[coor][nu],n),res1,n),res2,n);
+		  else
+		    {
+		      staples[j]=Times(Times(dagger(lattice[coor+mua-nua][nu],n),dagger(lattice[coor-nua][mu],n),res1,n),lattice[coor-nua][nu],res2,n);
+		      j++;
+		      staples[j]=Times(lattice[coor+mua][nu],Times(dagger(lattice[coor+nua][mu],n),dagger(lattice[coor][nu],n),res1,n),res2,n);;
+		    }
+		  free(res1);
+		  free(res2);
+		}
+	    }
+	
+	  //update the link
+
+	  double **copy=(double**)malloc(n*n*sizeof(double*));
+	  for(int j=0; j<n*n; j++)
+	    {
+	      copy[j]=(double*)calloc(2,sizeof(double));
+	      copy[j][0]=lattice[coor][mu][j][0];
+	      copy[j][1]=lattice[coor][mu][j][1];
+	    }
+	  //select 10 random SU(n) matrices
+	  srand(time(NULL));
+	  for(int i=0; i<10; i++)
+	    {
+	      double **res2=(double**)malloc(n*n*sizeof(double*));
+	      for(int j=0; j<n*n; j++)
+		{
+		  res2[j]=(double*)calloc(2,sizeof(double));
+		}
+	      int ran=(int)((double)rand()/((double)RAND_MAX/100));
+	      printf("ran=%d\n",ran);
+	      copy=Times(container[ran],copy,res2,n);
+	    }
+	  //calculate dS (METROPOLIS PART)
+	  double dS=0;
+	  for(int j=0; j<nstap; j++)
+	    {
+	      double **res2=(double**)malloc(n*n*sizeof(double*));
+	      for(int i=0; i<n*n; i++)
+		{
+		  res2[i]=(double*)calloc(2,sizeof(double));
+		}
+	      dS+=-beta*1.0/3.0*trace_real(Times(staples[j],copy,res2,n),n);
+	      dS-=-beta*1.0/3.0*trace_real(Times(staples[j],lattice[coor][mu],res2,n),n);
+	      free(res2);
+	    }
+	  free(staples);
+	  if(dS<0)
+	    {
+	      for(int k=0; k<n*n; k++)
+		{
+		  lattice[coor][mu][k][0]=copy[k][0];
+		  lattice[coor][mu][k][1]=copy[k][1];
+		}
+	    }
+	  else
+	    {
+	      srand(time(NULL)); 
+	      double ran2=(double)rand()/((double)RAND_MAX);
+	      if(exp(-dS)>ran2)
+		{
+		for(int k=0; k<n*n; k++)
+		  {
+		    lattice[coor][mu][k][0]=copy[k][0];
+		    lattice[coor][mu][k][1]=copy[k][1];
+		  }
+		}
+	    }
+	  free(copy);
+	}
+    }
+  free(x);
+  return lattice;
+}
+
 
 double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
 {
@@ -364,7 +513,7 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
 	  for(int mu=nu+1; mu<d; mu++)
 	    {
 	      if(x[mu]==spacing)
-		  continue;
+		continue;
 	      S+=-beta*plaq(lattice, coor, nu, mu, n, spacing);
 	    }
 	}
@@ -391,15 +540,9 @@ double plaq(double ****lattice, int coor, int nu, int mu, int n, int spacing)
   double **res3=(double**)malloc(n*n*sizeof(double*));
   for(int i=0; i<n*n; i++)
     {
-      res1[i]=(double*)malloc(2*sizeof(double));
-      res2[i]=(double*)malloc(2*sizeof(double));
-      res3[i]=(double*)malloc(2*sizeof(double));
-      res1[i][0]=0;
-      res1[i][1]=0;
-      res2[i][0]=0;
-      res2[i][1]=0;
-      res3[i][0]=0;
-      res3[i][1]=0;
+      res1[i]=(double*)calloc(2,sizeof(double));
+      res2[i]=(double*)calloc(2,sizeof(double));
+      res3[i]=(double*)calloc(2,sizeof(double));
     }
   res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
   res2=Times(dagger(lattice[coor+nua][mu], n),dagger(lattice[coor][nu], n),res2,n);
@@ -420,12 +563,8 @@ double **Times(double** M, double** N, double** res, int n)
       B[i]=(double**)malloc(n*sizeof(double*));
       for(int j=0; j<n; j++)
 	{
-	  B[i][j]=(double*)malloc(2*sizeof(double));
-	  A[i][j]=(double*)malloc(2*sizeof(double));
-	  A[i][j][0]=0;
-	  B[i][j][0]=0;
-	  A[i][j][1]=0;
-	  B[i][j][1]=0;
+	  B[i][j]=(double*)calloc(2,sizeof(double));
+	  A[i][j]=(double*)calloc(2,sizeof(double));
 	}
     }
   for(int k=0; k<n*n; k++)
