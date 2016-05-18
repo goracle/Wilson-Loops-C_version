@@ -681,7 +681,7 @@ int main()
     {
       update(lattice,container,n,d,spacing,beta);
       printf("here we are=%d\n",10*Ncor-i);
-      printf("axa avg=%.6f\n",calculate_S(lattice,beta,d,spacing,n)/s2);
+      //printf("axa avg=%.6f\n",calculate_S(lattice,beta,d,spacing,n)/s2);
     }
 
 
