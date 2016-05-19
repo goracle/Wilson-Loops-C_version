@@ -11,6 +11,8 @@ double* times(double* z, double* y, double* result);
 
 double getnorm(double** M,int n, int col);
 
+double getnorm2(double* a, double *result);
+
 double*** gen_rand_matrix(int n, double epsilon);
 
 double**** initialize_lat(int d, int spacing, int n);
@@ -117,6 +119,11 @@ double getnorm(double** M,int n, int col=0)
   return sum;
 }
 
+double getnorm2(double* a, double *result)
+{
+  return times(star(a,result),a,result)[0];
+}
+
 double* star(double* x, double* result)
 {
   result[0]=x[0];
@@ -218,18 +225,12 @@ double*** gen_rand_matrix(int n, double epsilon)
 	    }
 	}
       //get determinant
+      determinant[0]=0;
+      determinant[1]=0;
       determinant=getdet(M,n,determinant);
+      //printf("norm of det=%.6f\n", getnorm2(determinant,c));
       //now that we have the determinant(aka the phase), we must divide the matrix by the determinant^n
-      double phase=0;
-      if(determinant[0]!=0)
-	{
-	  phase=-1.0*atan(determinant[1]/determinant[0])/n;
-	}
-      else
-	{
-	  phase=-1.0*asin(determinant[1])/n;
-	}
-      
+      double phase=-1.0*atan2(determinant[1],determinant[0])/n;
       c[0]=cos(phase);
       c[1]=sin(phase);
       //make the unitary matrix SU(N) with n=N
@@ -239,7 +240,6 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  M[d][0]=res[0];
 	  M[d][1]=res[1];
 	}
-      //store the result
       container[i]=M;
     }
   free(produ);
@@ -572,7 +572,7 @@ double **Times(double** M, double** N, double** res, int n)
   free(res4);
   return res;
 }
-//confident
+
 double trace_real(double **M, int n)
 {
   double sum=0;
@@ -592,8 +592,8 @@ double** dagger(double** M, double** newM, int n)
       int kprime=j*n+i;
       if(kprime==k)
 	{
-	newM[k][0]=M[k][0];
-	newM[k][1]=-1*M[k][1];
+	  newM[k][0]=M[k][0];
+	  newM[k][1]=-1*M[k][1];
 	}
       else if(kprime>k)
 	{
@@ -633,6 +633,13 @@ double**** initialize_lat(int d, int spacing, int n)
 		{
 		  lattice[coor][dir][index][0]=1;
 		  lattice[coor][dir][index][1]=0;
+		  if((index==0 || index==n+1)&& n%2!=0 && dir==0)
+		    {
+		      //slightly disordered starting point
+		      //lattice[coor][dir][index][0]=-1;
+		      //ordered
+		      lattice[coor][dir][index][0]=1;
+		    }
 		}
 	      else
 		{
@@ -675,7 +682,7 @@ int main()
   int spacing=8;
   
   ////intermediate result storage
-double **res1=(double**)malloc(n*n*sizeof(double*));
+  double **res1=(double**)malloc(n*n*sizeof(double*));
   double **res2=(double**)malloc(n*n*sizeof(double*));
   double **res3=(double**)malloc(n*n*sizeof(double*));
   double **newM=(double**)malloc(n*n*sizeof(double*));
@@ -704,8 +711,7 @@ double **res1=(double**)malloc(n*n*sizeof(double*));
 	  container[i][k][1]=newM[k][1];
 	}
     }
-
-
+  print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
   //initialize the lattice
   double**** lattice=initialize_lat(d,spacing,n);
   //calculate the total number of plaquettes
