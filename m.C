@@ -138,7 +138,6 @@ double*** gen_rand_matrix(int n, double epsilon)
   double *c=(double*)malloc(2*sizeof(double));
   double* determinant=(double*)calloc(2,sizeof(double));
   double* res=(double*)malloc(2*sizeof(double));
-  double* x=(double*)malloc(2*sizeof(double)); 
   for(int i=0; i<100; i++)
     {
       //make a hermitian matrix with entries between -1 and 1
@@ -472,7 +471,7 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
 	      double res=0;
 	      res=-beta*plaq(lattice, coor, mu, nu, n, spacing,d, res);
 	      S+=res;
-	      if(res/beta>1 || -res/beta>1)
+	      if(res/beta>1.01 || -res/beta>1.01)
 		{
 		  printf("res=%.6f\n",res);
 		  printf("fuck\n");
@@ -662,7 +661,7 @@ int* findcoord(int d, int spacing, int coor, int* x)
 
 int main()
 {
-  //global constants
+  ////global constants
   double epsilon=.24;
   double beta=5.5;
   //double beta=1;
@@ -675,11 +674,8 @@ int main()
   //spacing=L/a
   int spacing=8;
   
-  //generate 100 SU(3) matrices
-  double ***container=gen_rand_matrix(n,epsilon);
-  //place the daggers of the random SU(3) matrices in the container as well
-
-  double **res1=(double**)malloc(n*n*sizeof(double*));
+  ////intermediate result storage
+double **res1=(double**)malloc(n*n*sizeof(double*));
   double **res2=(double**)malloc(n*n*sizeof(double*));
   double **res3=(double**)malloc(n*n*sizeof(double*));
   double **newM=(double**)malloc(n*n*sizeof(double*));
@@ -693,46 +689,11 @@ int main()
       res3[i]=(double*)calloc(2,sizeof(double));
     }
 
-  double* detss=(double*)calloc(2,sizeof(double));
-  detss=getdet(container[0],n,detss);
-  printf("determinant=%.6f\n",detss[0]);
-  printf("determinant=%.6f\n",detss[1]);
-  print_mat(container[0],n);
-  print_mat(dagger(container[0],newM2,n),n);
-  print_mat(Times(container[0],dagger(container[0],newM,n),res1,n),n);
-
-  for(int i=0; i<100; i++)
-    {
-      for(int k=0; k<n*n; k++)
-	{
-	  free(container[i][k]);
-	}
-      free(container[i]);
-    }
-  free(container);
-  for(int k=0; k<n*n; k++)
-    {
-      free(res1[k]);
-      free(res2[k]);
-      free(res3[k]);
-      free(newM[k]);
-      free(newM2[k]);
-    }
-  free(detss);
-  free(res1);
-  free(res2);
-  free(res3);
-  free(newM);
-  free(newM2);
-  return 0;
-
-  //double** newM=(double**)malloc(n*n*sizeof(double*));
-  for(int i=0; i<n*n; i++)
-    {
-      newM[i]=(double*)calloc(2,sizeof(double)); 
-    }
+  ////generate 100 SU(3) matrices
+  double ***container=gen_rand_matrix(n,epsilon);
+  //place the daggers of the random SU(3) matrices in the container as well
   container=(double***)realloc(container,2*100*sizeof(double**));
-  for(int i=100;i<200; i++)
+  for(int i=100; i<200; i++)
     {
       container[i]=(double**)malloc(n*n*sizeof(double*));
       newM=dagger(container[i-100],newM,n);
@@ -771,19 +732,54 @@ int main()
   //update the links Ncor times, save S, repeat Ncf-1 times
   for(int i=0; i<Ncf; i++)
     {
-      avg_plqt+=calculate_S(lattice, 1/total_plqts, d, spacing,n)/Ncf;
+      avg_plqt+=calculate_S(lattice, beta, d, spacing,n)/Ncf/total_plqts;
       printf("avg_plqt(axa)=%.6f\n",avg_plqt);
       for(int j=0; j<Ncor; j++)
 	update(lattice,container,n,d,spacing,beta);
     }
 
   printf("\n average axa=%.6f\n",avg_plqt);
-  //loop over links
 
-  ///update the link
-
-  //calculate the action
-  free(lattice);
+  //freedom
+  for(int i=0; i<200; i++)
+    {
+      for(int k=0; k<n*n; k++)
+	{
+	  free(container[i][k]);
+	}
+      free(container[i]);
+    }
   free(container);
+  for(int k=0; k<n*n; k++)
+    {
+      free(res1[k]);
+      free(res2[k]);
+      free(res3[k]);
+      free(newM[k]);
+      free(newM2[k]);
+    }
+  free(res1);
+  free(res2);
+  free(res3);
+  free(newM);
+  free(newM2);
+  int pow=1;
+  for(int k=0; k<d; k++)
+    {
+      pow*=(spacing+1);
+    }
+  for(int i=0; i<pow; i++)
+    {
+      for(int s=0; s<d; s++)
+	{
+	  for(int k=0; k<n*n; k++)
+	    {
+	      free(lattice[i][s][k]);
+	    }
+	  free(lattice[i][s]);
+	}
+      free(lattice[i]);
+    }
+  free(lattice);
   return 0;
 }
