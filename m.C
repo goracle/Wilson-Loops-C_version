@@ -9,6 +9,8 @@ double* getdet(double** M,int n, double* temp_fin);
 
 double* times(double* z, double* y, double* result);
 
+int testarg(int arg, int d, int spacing);
+
 double getnorm(double** M,int n, int col);
 
 double getnorm2(double* a, double *result);
@@ -271,9 +273,27 @@ int factorial(int d)
   return d*factorial(d-1);
 }
 
+int testarg(int arg, int d, int spacing)
+{
+   int pow=1;
+  for(int k=0; k<d; k++)
+    {
+      pow*=(spacing);
+    } 
+  if(arg>=pow || arg<0)
+    {
+      printf("arg that failed=%d\n", arg);
+    exit(EXIT_FAILURE);
+    }
+  else
+    return 0;
+}
+
 
 double**** update(double**** lattice, double*** container, int n, int d, int spacing, double beta)
 {
+  int accept=0;
+  int reject=0;
   //storage for coordinates
   int* x=(int*)calloc(d,sizeof(int));
   //storage for a copy of the link we are currently updating
@@ -303,7 +323,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
   int pow=1;
   for(int k=0; k<d; k++)
     {
-      pow*=(spacing+1);
+      pow*=(spacing);
     }
   //loop over coordinates
   for(int coor=0; coor<pow; coor++)
@@ -315,13 +335,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	  int mua=1;
 	  for(int i=0; i<mu; i++)
 	    {
-	      mua*=spacing+1;
-	    }
-	  //check if link even exists (none extend beyond edge of lattice)
-	  if(x[mu]==spacing)
-	    {
-	      //periodic boundary conditions: loop around, but we've already hit this link, so continue
-	      continue;
+	      mua*=spacing;
 	    }
 	  //index of staples
 	  int nstap=0;
@@ -335,7 +349,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      int nua=1;
 	      for(int j=0; j<nu; j++)
 		{
-		  nua*=spacing+1;
+		  nua*=spacing;
 		}
 	      //index of staples to store the new staples of the mu,nu plane
 	      int stap_start=nstap;
@@ -346,19 +360,25 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      //loopy staples part
 	      int modup=0;
 	      int moddown=0;
-	      if(x[nu]==spacing)
+	      int sidemod=0;
+	      if(x[nu]==spacing-1)
 		{
 		  moddown=0;
-		  modup=-nua*spacing;
+		  modup=-nua*(spacing);
 		}
 	      if(x[nu]==0)
 		{
 		  modup=0;
-		  moddown=nua*spacing;
+		  moddown=nua*(spacing);
 		}
-	      //else, midplane, 2 staples (mod=0)
+	      if(x[mu]==(spacing-1))
+		{
+		  sidemod=-(spacing)*mua;
+		}
 	      //down staple
-	      res1=Times(dagger(lattice[coor+mua-nua+moddown][nu],newM,n),dagger(lattice[coor-nua+moddown][mu],newM2,n),res1,n);
+	      testarg(coor+mua-nua+moddown+sidemod,d,spacing);
+	      testarg(coor-nua+moddown,d,spacing);
+	      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM,n),dagger(lattice[coor-nua+moddown][mu],newM2,n),res1,n);
 	      res2=Times(res1,lattice[coor-nua+moddown][nu],res2,n);
 	      for(int v=0; v<n*n; v++)
 		{
@@ -367,8 +387,10 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 		}
 	      j++;
 	      //up staple
-	      res1=Times(dagger(lattice[coor+nua+modup][mu],newM,n),dagger(lattice[coor+modup][nu],newM2,n),res1,n);
-	      res2=Times(lattice[coor+mua+modup][nu],res1,res2,n);
+	      testarg(coor+nua+modup,d,spacing);
+	      testarg(coor+mua+sidemod,d,spacing);
+	      res1=Times(dagger(lattice[coor+nua+modup][mu],newM,n),dagger(lattice[coor][nu],newM2,n),res1,n);
+	      res2=Times(lattice[coor+mua+sidemod][nu],res1,res2,n);
 	      for(int v=0; v<n*n; v++)
 		{
 		  staples[j][v][0]=res2[v][0];
@@ -382,6 +404,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      //select a random SU(n) matrix
 	      srand(clock());
 	      int ran=(int)((double)rand()/((double)RAND_MAX/200));
+	      //printf("ran=%d\n",ran);
 	      //form M-1
 	      for(int v=0; v<n*n; v++)
 		{
@@ -395,11 +418,15 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      res2=Times(copy,lattice[coor][mu],res2,n);
 	      //calculate dS (METROPOLIS PART)
 	      double dS=0;
-	      for(int j=0; j<nstap; j++)
-		dS+=-beta*1.0/n*trace_real(Times(res2,staples[j],res1,n),n);
+	      for(int y=0; y<nstap; y++)
+		{
+		dS+=-beta*1.0/((double)n*1.0)*trace_real(Times(res2,staples[y],res1,n),n);
+		}
 	      //metropolis condition
 	      if(dS<0)
 		{
+		  accept++;
+		  //printf("accept=%d\n",i);
 		  //printf("ds=%.6f\n",dS);
 		  res1=Times(container[ran],lattice[coor][mu],res1,n);
 		  for(int k=0; k<n*n; k++)
@@ -412,8 +439,13 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 		{
 		  srand(clock());
 		  double ran2=(double)rand()/((double)RAND_MAX);
+		  //printf("ran2=%.6f\n",ran2);
+		  //printf("exp(-dS)=%.6f\n",exp(-dS));
+		  //printf("dS=%.6f\n",dS);
 		  if(exp(-dS)>ran2)
 		    {
+		      accept++;
+		      //printf("accept=%d\n",i);
 		      res1=Times(container[ran],lattice[coor][mu],res1,n);
 		      for(int k=0; k<n*n; k++)
 			{
@@ -421,6 +453,9 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 			  lattice[coor][mu][k][1]=res1[k][1];
 			}
 		    }
+		  else
+		    reject++;
+		  //printf("reject=%d\n",i);
 		}
 	      //end 10 hits of metropolis
 	    }
@@ -451,6 +486,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
   free(newM);
   free(staples);
   free(x);
+  //printf("ratio=(accept,reject)=%d,%d",accept,reject);
   return lattice;
 }
 
@@ -460,7 +496,7 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
   int pow=1;
   for(int k=0; k<d; k++)
     {
-      pow*=(spacing+1);
+      pow*=(spacing);
     }
   for(int coor=0; coor<pow; coor++)
     {
@@ -469,7 +505,7 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
 	  for(int nu=mu+1; nu<d; nu++)
 	    {
 	      double res=0;
-	      res=-beta*plaq(lattice, coor, mu, nu, n, spacing,d, res);
+	      res=-beta*plaq(lattice, coor, mu, nu, n, spacing, d, res);
 	      S+=res;
 	      if(res/beta>1.01 || -res/beta>1.01)
 		{
@@ -507,34 +543,43 @@ double plaq(double ****lattice, int coor, int mu, int nu, int n, int spacing,int
   int mua=1;
   for(int i=0; i<nu; i++)
     {
-      nua*=spacing+1;
+      nua*=spacing;
     }
   for(int i=0; i<mu; i++)
     {
-      mua*=spacing+1;
+      mua*=spacing;
     }
   //periodic boundary conditions means the link that sticks out loops around
-  if(x[mu]==spacing && x[nu]!=spacing)
+  if(x[mu]==spacing-1 && x[nu]!=spacing-1)
     {
-      res1=Times(lattice[coor-mua*spacing][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-mua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
+      testarg(coor+mua-mua*spacing,d,spacing);
+      testarg(coor+nua,d,spacing);
+      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
+      res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
     }
-  else if(x[mu]!=spacing && x[nu]==spacing)
+  else if(x[mu]!=spacing-1 && x[nu]==spacing-1)
     {
-      res1=Times(lattice[coor][mu],lattice[coor+mua-nua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor-nua*spacing][nu],newM2, n),res2,n);
+      testarg(coor+mua,d,spacing);
+      testarg(coor+nua-nua*spacing,d,spacing);
+      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
+      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
     }
-  else if(x[mu]==spacing && x[nu]==spacing)
+  else if(x[mu]==spacing-1 && x[nu]==spacing-1)
     {
-      return 0;
+      testarg(coor+nua-nua*spacing,d,spacing);
+      testarg(coor+mua-mua*spacing,d,spacing);
+      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
+      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
     }
   else
     {
+      testarg(coor+nua,d,spacing);
+      testarg(coor+mua,d,spacing);
       res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
       res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
     }
   //result
-  result=1.0/n*trace_real(Times(res1,res2,res3,n),n);
+  result=1.0/((double)n*1.0)*trace_real(Times(res1,res2,res3,n),n);
   for(int i=0; i<n*n; i++)
     {
       free(newM[i]);
@@ -611,20 +656,20 @@ double**** initialize_lat(int d, int spacing, int n)
   int pow=1;
   for(int k=0; k<d; k++)
     {
-      pow*=spacing+1;
+      pow*=spacing;
     }
   double**** lattice=(double****)malloc(pow*sizeof(double***));
   //coordinate,direction of link, index of nxn matrix, real/imag part
   int* x=(int*)malloc(d*sizeof(int));
   for(int coor=0; coor<pow; coor++)
     {
+      x=findcoord(d, spacing, coor, x);
       lattice[coor]=(double***)malloc(d*sizeof(double**));
       for(int dir=0; dir<d; dir++)
 	{
 	  lattice[coor][dir]=(double**)malloc(n*n*sizeof(double*));
 	  for(int index=0; index<n*n; index++)
 	    {
-	      x=findcoord(d, spacing, coor, x);
 	      lattice[coor][dir][index]=(double*)malloc(2*sizeof(double));
 	      //below: first condition sees if we are on diagonal
 	      //second condition tests if we are on the border of the lattice
@@ -659,8 +704,8 @@ int* findcoord(int d, int spacing, int coor, int* x)
   int coors=coor;
   while(coors>=0 && temp<d)
     {
-      x[temp]=coors-(coors/(1+spacing))*(spacing+1);
-      coors/=(spacing+1);
+      x[temp]=coors-(coors/(spacing))*(spacing);
+      coors/=(spacing);
       temp++;
     }
   return x;
@@ -673,7 +718,7 @@ int main()
   double beta=5.5;
   //double beta=1;
   int Ncor=50;
-  int Ncf=100;
+  int Ncf=1000;
   //dimension of matrices (nxn)
   int n=3;
   //dimensions of lattice d^4: 4x4x4x4 lattice
@@ -711,12 +756,26 @@ int main()
 	  container[i][k][1]=newM[k][1];
 	}
     }
+  //generate random matrices, check
   print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
+  print_mat(Times(container[148],container[48],res2,n),n);
+  print_mat(container[148],n);
+  double *x=(double*)calloc(2,sizeof(double));
+  x=getdet(container[148],n,x);
+  printf("x[0]=%.6f\n", x[0]);
+  printf("x[1]=%.6f\n", x[1]);
+  x[0]=0;
+  x[1]=0;
+  x=getdet(container[48],n,x);
+  printf("x[0]=%.6f\n", x[0]);
+  printf("x[1]=%.6f\n", x[1]);
+  free(x);
+
   //initialize the lattice
   double**** lattice=initialize_lat(d,spacing,n);
   //calculate the total number of plaquettes
   double s2=calculate_S(lattice, beta, d, spacing,n);
-  double total_plqts=s2;
+  double total_plqts=factorial(d)*pow(spacing,d)*.5*.5;
   printf("Well, S_init=%.6f\n",s2);
 
   double s3=0;
@@ -726,10 +785,7 @@ int main()
     {
       update(lattice,container,n,d,spacing,beta);
       printf("here we are=%d\n",10*Ncor-i);
-      s3=calculate_S(lattice,beta,d,spacing,n);
-      printf("\n S=%.6f\n",s3);
-      s3/=s2;
-      printf("axa avg=%.6f\n",s3);
+      printf("axa avg=%.6f\n",calculate_S(lattice,-1,d,spacing,n)/total_plqts);
     }
 
 
@@ -738,8 +794,8 @@ int main()
   //update the links Ncor times, save S, repeat Ncf-1 times
   for(int i=0; i<Ncf; i++)
     {
-      avg_plqt+=calculate_S(lattice, beta, d, spacing,n)/Ncf/total_plqts;
-      printf("avg_plqt(axa)=%.6f\n",avg_plqt);
+      avg_plqt+=calculate_S(lattice, -1, d, spacing,n)/Ncf/total_plqts;
+      printf("avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt*Ncf/(i+1),i);
       for(int j=0; j<Ncor; j++)
 	update(lattice,container,n,d,spacing,beta);
     }
@@ -772,7 +828,7 @@ int main()
   int pow=1;
   for(int k=0; k<d; k++)
     {
-      pow*=(spacing+1);
+      pow*=(spacing);
     }
   for(int i=0; i<pow; i++)
     {
