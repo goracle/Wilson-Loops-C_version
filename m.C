@@ -145,6 +145,9 @@ double*** gen_rand_matrix(int n, double epsilon)
   double* produ=(double*)malloc(2*sizeof(double));
   double* produ1=(double*)malloc(2*sizeof(double));
   double *c=(double*)malloc(2*sizeof(double));
+  double *x=(double*)malloc(2*sizeof(double));
+  double *y=(double*)malloc(2*sizeof(double));
+  double *z=(double*)malloc(2*sizeof(double));
   double* determinant=(double*)calloc(2,sizeof(double));
   double* res=(double*)malloc(2*sizeof(double));
   for(int i=0; i<100; i++)
@@ -162,6 +165,7 @@ double*** gen_rand_matrix(int n, double epsilon)
 	    {
 	      M[k]=(double*)calloc(2,sizeof(double));
 	      //generate the random number
+	      srand(clock());
 	      double r=(double)rand()/((double)RAND_MAX/2)-1.0;
 	      if(k!=k2)
 		{
@@ -192,55 +196,82 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  //printf("beginning gs procedure,%d\n",col);
 	  if(col>0)
 	    {
-	      for(int prev=col-1; prev>=0; prev--)
+	      if(n==3 && col!=2)
 		{
-		  //get dot product
-		  //printf("getting dot product,prev=%d\n",prev);
-		  product[0]=0;
-		  product[1]=0;
-		  for(int row=0; row<n; row++)
+		  for(int prev=col-1; prev>=0; prev--)
 		    {
-		      produ=times(star(M[n*row+prev],produ1),M[n*row+col],produ);
-		      product[1]+=produ[1];
-		      product[0]+=produ[0];
-		    }
-		  //subtract the projection of the prev. col onto the current
-		  //from the current
-		  //printf("subtracting projection\n");
-		  for(int row=0; row<n; row++)
-		    {
-		      produ=times(product,M[n*row+prev],produ);
-		      M[n*row+col][0]-=produ[0];
-		      M[n*row+col][1]-=produ[1];
+		      //get dot product
+		      //printf("getting dot product,prev=%d\n",prev);
+		      product[0]=0;
+		      product[1]=0;
+		      for(int row=0; row<n; row++)
+			{
+			  produ=times(star(M[n*row+prev],produ1),
+				      M[n*row+col],produ);
+			  product[1]+=produ[1];
+			  product[0]+=produ[0];
+			}
+		      //subtract the projection of the prev.
+		      //col onto the current
+		      //from the current
+		      //printf("subtracting projection\n");
+		      for(int row=0; row<n; row++)
+			{
+			  produ=times(product,M[n*row+prev],produ);
+			  M[n*row+col][0]-=produ[0];
+			  M[n*row+col][1]-=produ[1];
+			}
 		    }
 		}
 	    }
+	  if(n==3 && col==2)
+	    {
+	      y=times(star(M[3],c),star(M[7],x),y);
+	      z=times(star(M[4],c),star(M[6],x),z);
+	      M[2][0]=y[0]-z[0];
+	      M[2][1]=y[1]-z[1];
+	      y=times(star(M[6],c),star(M[1],x),y);
+	      z=times(star(M[0],c),star(M[7],x),z);
+	      M[5][0]=y[0]-z[0];
+	      M[5][1]=y[1]-z[1];
+	      y=times(star(M[0],c),star(M[4],x),y);
+	      z=times(star(M[1],c),star(M[3],x),z);
+	      M[8][0]=y[0]-z[0];
+	      M[8][1]=y[1]-z[1];
+	    }
 	  ////normalize the resulting column
 	  //printf("normalize the result\n");
-	  double sum=getnorm(M,n,col);
-	  //divide by sum, aka, the norm
-	  //printf("divide by sum=%f\n",sum);
-	  for(int row=0; row<n; row++)
+	  if(n==3 && col!=2)
 	    {
-	      M[n*row+col][0]/=sum;
-	      M[n*row+col][1]/=sum;
+	      double sum=getnorm(M,n,col);
+	      //divide by sum, aka, the norm
+	      //printf("divide by sum=%f\n",sum);
+	      for(int row=0; row<n; row++)
+		{
+		  M[n*row+col][0]/=sum;
+		  M[n*row+col][1]/=sum;
+		}
 	    }
 	}
-      //get determinant
-      determinant[0]=0;
-      determinant[1]=0;
-      determinant=getdet(M,n,determinant);
-      //printf("norm of det=%.6f\n", getnorm2(determinant,c));
-      //now that we have the determinant(aka the phase), we must divide the matrix by the determinant^n
-      double phase=-1.0*atan2(determinant[1],determinant[0])/n;
-      c[0]=cos(phase);
-      c[1]=sin(phase);
-      //make the unitary matrix SU(N) with n=N
-      for(int d=0; d<n*n; d++)
+      if(n!=3)
 	{
-	  res=times(M[d],c,res);
-	  M[d][0]=res[0];
-	  M[d][1]=res[1];
+	  //get determinant
+	  determinant[0]=0;
+	  determinant[1]=0;
+	  determinant=getdet(M,n,determinant);
+	  //printf("norm of det=%.6f\n", getnorm2(determinant,c));
+	  //now that we have the determinant(aka the phase),
+	  //we must divide the matrix by the determinant^n
+	  double phase=-1.0*atan2(determinant[1],determinant[0])/n;
+	  c[0]=cos(phase);
+	  c[1]=sin(phase);
+	  //make the unitary matrix SU(N) with n=N
+	  for(int d=0; d<n*n; d++)
+	    {
+	      res=times(M[d],c,res);
+	      M[d][0]=res[0];
+	      M[d][1]=res[1];
+	    }
 	}
       container[i]=M;
     }
@@ -248,6 +279,9 @@ double*** gen_rand_matrix(int n, double epsilon)
   free(produ1);
   free(res);
   free(c);
+  free(x);
+  free(y);
+  free(z);
   free(product);
   free(determinant);
   return container;
@@ -275,7 +309,7 @@ int factorial(int d)
 
 int testarg(int arg, int d, int spacing)
 {
-   int pow=1;
+  int pow=1;
   for(int k=0; k<d; k++)
     {
       pow*=(spacing);
@@ -283,7 +317,7 @@ int testarg(int arg, int d, int spacing)
   if(arg>=pow || arg<0)
     {
       printf("arg that failed=%d\n", arg);
-    exit(EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
   else
     return 0;
@@ -399,7 +433,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	    }
 	
 	  //update the link
-	  for(int tr=0; tr<10; tr++)
+	  for(int tr=0; tr<1; tr++)
 	    {
 	      //select a random SU(n) matrix
 	      srand(clock());
@@ -420,7 +454,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      double dS=0;
 	      for(int y=0; y<nstap; y++)
 		{
-		dS+=-beta*1.0/((double)n*1.0)*trace_real(Times(res2,staples[y],res1,n),n);
+		  dS+=-beta*1.0/((double)n*1.0)*trace_real(Times(res2,staples[y],res1,n),n);
 		}
 	      //metropolis condition
 	      if(dS<0)
@@ -724,7 +758,7 @@ int main()
   //dimensions of lattice d^4: 4x4x4x4 lattice
   int d=4;
   //spacing=L/a
-  int spacing=8;
+  int spacing=4;
   
   ////intermediate result storage
   double **res1=(double**)malloc(n*n*sizeof(double*));
@@ -759,7 +793,7 @@ int main()
   //generate random matrices, check
   print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
   print_mat(Times(container[148],container[48],res2,n),n);
-  print_mat(container[148],n);
+  print_mat(container[48],n);
   double *x=(double*)calloc(2,sizeof(double));
   x=getdet(container[148],n,x);
   printf("x[0]=%.6f\n", x[0]);
