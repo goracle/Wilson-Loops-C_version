@@ -752,7 +752,7 @@ int main()
   double beta=5.5;
   //double beta=1;
   int Ncor=50;
-  int Ncf=1000;
+  int Ncf=500;
   //dimension of matrices (nxn)
   int n=3;
   //dimensions of lattice d^4: 4x4x4x4 lattice
@@ -791,26 +791,26 @@ int main()
 	}
     }
   //generate random matrices, check
-  print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
-  print_mat(Times(container[148],container[48],res2,n),n);
-  print_mat(container[48],n);
-  double *x=(double*)calloc(2,sizeof(double));
-  x=getdet(container[148],n,x);
-  printf("x[0]=%.6f\n", x[0]);
-  printf("x[1]=%.6f\n", x[1]);
-  x[0]=0;
-  x[1]=0;
-  x=getdet(container[48],n,x);
-  printf("x[0]=%.6f\n", x[0]);
-  printf("x[1]=%.6f\n", x[1]);
-  free(x);
+  //  print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
+  //print_mat(Times(container[148],container[48],res2,n),n);
+  //print_mat(container[48],n);
+  //double *x=(double*)calloc(2,sizeof(double));
+  //x=getdet(container[148],n,x);
+  //printf("x[0]=%.6f\n", x[0]);
+  //printf("x[1]=%.6f\n", x[1]);
+  //x[0]=0;
+  //x[1]=0;
+  //x=getdet(container[48],n,x);
+  //printf("x[0]=%.6f\n", x[0]);
+  //printf("x[1]=%.6f\n", x[1]);
+  //free(x);
 
   //initialize the lattice
   double**** lattice=initialize_lat(d,spacing,n);
   //calculate the total number of plaquettes
   double s2=calculate_S(lattice, beta, d, spacing,n);
   double total_plqts=factorial(d)*pow(spacing,d)*.5*.5;
-  printf("Well, S_init=%.6f\n",s2);
+  //printf("Well, S_init=%.6f\n",s2);
 
   double s3=0;
   //thermalize the lattice 10*Ncor times
@@ -818,8 +818,8 @@ int main()
   for(int i=0; i<10*Ncor; i++)
     {
       update(lattice,container,n,d,spacing,beta);
-      printf("here we are=%d\n",10*Ncor-i);
-      printf("axa avg=%.6f\n",calculate_S(lattice,-1,d,spacing,n)/total_plqts);
+      //printf("here we are=%d\n",10*Ncor-i);
+      //printf("axa avg=%.6f\n",calculate_S(lattice,-1,d,spacing,n)/total_plqts);
     }
 
 
@@ -829,12 +829,12 @@ int main()
   for(int i=0; i<Ncf; i++)
     {
       avg_plqt+=calculate_S(lattice, -1, d, spacing,n)/Ncf/total_plqts;
-      printf("avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt*Ncf/(i+1),i);
+      //printf("avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt*Ncf/(i+1),i);
       for(int j=0; j<Ncor; j++)
 	update(lattice,container,n,d,spacing,beta);
     }
 
-  printf("\n average axa=%.6f\n",avg_plqt);
+  printf("average axa=%.6f\n",avg_plqt);
 
   //freedom
   for(int i=0; i<200; i++)
