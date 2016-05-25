@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 
 import numpy as np
+#import matplotlib.pyplot as plt
+import pylab as pl
 
 def read_data(filename):
     data_org = []
+    #data_org_z = []
 
     data = open(filename, 'r')
     x=0
     for line in data:
-        x+=1
-        line=line[12:]
-        data_org.append(float(line))
+        if len(line)>26:
+            x+=1
+            y=line[28:36]
+            data_org.append(float(y))
+        #data_org_z.append(float(z))
          #print type(line)
     return np.array(data_org),x
 
@@ -29,10 +34,14 @@ therm_itr = 1500;
 sweep_itr = 50;
 
 
-data,x = read_data('wilsonloop.txt')
+data,x = read_data('results.txt')
+#print(y)
+#print(z)
+#plt.scatter(y,z)
+#plt.show()
 
 #data = remanage_data(data_org, therm_itr, sweep_itr)
-print data
+#print data
 print x
 
 mean, std = mean_data(data)
