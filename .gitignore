@@ -5,6 +5,7 @@
 *.elf
 *.png
 *.txt
+*~
 
 # Precompiled Headers
 *.gch
