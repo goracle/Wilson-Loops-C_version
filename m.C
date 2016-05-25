@@ -2,48 +2,16 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include "m.h"
+#define n 3
+#define spacing 8
+#define d 4
+#define epsilon 0.24
+#define beta 5.5
+#define Ncor 50
+#define Ncf 100
 
-double** minors(double **M, int n, int row, int column, double** minorr);
-
-double* getdet(double** M,int n, double* temp_fin);
-
-double trace_img(double **M, int n);
-  
-double* times(double* z, double* y, double* result);
-
-int testarg(int arg, int d, int spacing);
-
-double getnorm(double** M,int n, int col);
-
-double getnorm2(double* a, double *result);
-
-double*** gen_rand_matrix(int n, double epsilon);
-
-double**** initialize_lat(int d, int spacing, int n);
-
-double calculate_S(double ****lattice, double beta, int d, int spacing, int n);
-
-double calculate_S21(double ****lattice, double beta, int d, int spacing, int n);
-
-int* findcoord(int d, int spacing, int coor, int* x);
-
-double** dagger(double** M, double** newM, int n);
-
-double trace_real(double **M, int n);
-
-double **Times(double** M, double** N, double** res, int n);
-
-double plaq(double ****lattice, int coor, int nu, int mu, int n, int spacing,int d, double result );
-
-double plaq21(double ****lattice, int coor, int nu, int mu, int n, int spacing,int d, double result );
-
-double**** update(double**** lattice, double*** container, int n, int d, int spacing, double beta);
-
-int print_mat(double** M,int n);
-
-double* star(double* x, double* result);
-
-double** minors(double **M, int n, int row, int column, double** minorr)
+double** minors(double **M, int nn, int row, int column, double** minorr)
 {
 
   int newstart=0;
@@ -71,7 +39,7 @@ double* times(double* y, double* z,double* result)
   return result;
 }
 
-double* getdet(double** M,int n, double* temp_fin)
+double* getdet(double** M, int nn, double* temp_fin)
 {
   for(int column=0; column<n; column++)
     {
@@ -113,7 +81,7 @@ double* getdet(double** M,int n, double* temp_fin)
   return temp_fin;
 }
 
-double getnorm(double** M,int n, int col=0)
+double getnorm(double** M, int col=0)
 {
   double rsum=0;
   double sum=0;
@@ -139,7 +107,7 @@ double* star(double* x, double* result)
   return result;
 }
 
-double*** gen_rand_matrix(int n, double epsilon)
+double*** gen_rand_matrix()
 {
   //generate 100 SU(3) matrices
   //make a container
@@ -250,7 +218,7 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  //printf("normalize the result\n");
 	  if((n==3 && col!=2) || n!=3)
 	    {
-	      double sum=getnorm(M,n,col);
+	      double sum=getnorm(M,col);
 	      //divide by sum, aka, the norm
 	      //printf("divide by sum=%f\n",sum);
 	      for(int row=0; row<n; row++)
@@ -274,15 +242,15 @@ double*** gen_rand_matrix(int n, double epsilon)
 	  c[0]=cos(phase);
 	  c[1]=sin(phase);
 	  //make the unitary matrix SU(N) with n=N
-	  for(int d=0; d<n*n; d++)
+	  for(int r=0; r<n*n; r++)
 	    {
-	      res=times(M[d],c,res);
-	      M[d][0]=res[0];
-	      M[d][1]=res[1];
+	      res=times(M[r],c,res);
+	      M[r][0]=res[0];
+	      M[r][1]=res[1];
 	    }
 	}
       container[i]=M;
-      if(trace_real(M,n)/n>-.8)
+      if(trace_real(M)/n>-.8)
 	{
 	  //printf("trace real=%.6f\n",trace_real(M,n));
 	  container[i]=M;
@@ -302,7 +270,7 @@ double*** gen_rand_matrix(int n, double epsilon)
   return container;
 }
 
-int print_mat(double** M,int n)
+int print_mat(double** M)
 {
   if(n!=3)
     return -1;
@@ -313,16 +281,7 @@ int print_mat(double** M,int n)
   return 0;
 }
 
-
-
-int factorial(int d)
-{
-  if(d==1 || d<0)
-    return d;
-  return d*factorial(d-1);
-}
-
-int testarg(int arg, int d, int spacing)
+int testarg(int arg)
 {
   int pow=1;
   for(int k=0; k<d; k++)
@@ -339,7 +298,7 @@ int testarg(int arg, int d, int spacing)
 }
 
 
-double**** update(double**** lattice, double*** container, int n, int d, int spacing, double beta)
+double**** update(double**** lattice, double*** container)
 {
   //int accept=0;
   //int reject=0;
@@ -377,7 +336,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
   //loop over coordinates
   for(int coor=0; coor<pow; coor++)
     {
-      x=findcoord(d, spacing, coor, x);
+      x=findcoord(coor, x);
       for(int mu=0; mu<d; mu++)
 	{
 	  //increment of the coordinate in the mu direction by one unit
@@ -394,59 +353,16 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      //can't have xx or yy plane, clearly nonsense
 	      if(mu==nu)
 		continue;
-	      //increment of the coordinate in the nu direction by one unit
-	      int nua=1;
-	      for(int j=0; j<nu; j++)
-		{
-		  nua*=spacing;
-		}
-	      //index of staples to store the new staples of the mu,nu plane
 	      int stap_start=nstap;
-	      //due to periodic boundary conditions we always have 2 staples to compute
+	      //due to periodic boundary conditions
+	      //we always have 2 staples to compute
 	      nstap+=2;
+	      //index of staples to store the new staples of the mu,nu plane
 	      //j is our starting index
 	      int j=stap_start;
-	      //loopy staples part
-	      int modup=0;
-	      int moddown=0;
-	      int sidemod=0;
-	      if(x[nu]==spacing-1)
-		{
-		  moddown=0;
-		  modup=-nua*(spacing);
-		}
-	      if(x[nu]==0)
-		{
-		  modup=0;
-		  moddown=nua*(spacing);
-		}
-	      if(x[mu]==(spacing-1))
-		{
-		  sidemod=-(spacing)*mua;
-		}
-	      //down staple
-	      testarg(coor+mua-nua+moddown+sidemod,d,spacing);
-	      testarg(coor-nua+moddown,d,spacing);
-	      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM,n),dagger(lattice[coor-nua+moddown][mu],newM2,n),res1,n);
-	      res2=Times(res1,lattice[coor-nua+moddown][nu],res2,n);
-	      for(int v=0; v<n*n; v++)
-		{
-		  staples[j][v][0]=res2[v][0];
-		  staples[j][v][1]=res2[v][1];
-		}
-	      j++;
-	      //up staple
-	      testarg(coor+nua+modup,d,spacing);
-	      testarg(coor+mua+sidemod,d,spacing);
-	      res1=Times(dagger(lattice[coor+nua+modup][mu],newM,n),dagger(lattice[coor][nu],newM2,n),res1,n);
-	      res2=Times(lattice[coor+mua+sidemod][nu],res1,res2,n);
-	      for(int v=0; v<n*n; v++)
-		{
-		  staples[j][v][0]=res2[v][0];
-		  staples[j][v][1]=res2[v][1];
-		}
+	      staples=findstap(mu,mua,nu,x,coor,j,res1,res2,newM,newM2,lattice,staples,0);
+	      staples=findstap(mu,mua,nu,x,coor,j+1,res1,res2,newM,newM2,lattice,staples,1);
 	    }
-	
 	  //update the link
 	  //srand(clock());
 	  for(int tr=0; tr<10; tr++)
@@ -470,12 +386,12 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 	      //printf("copy=\n");
 	      //print_mat(copy,n);
 	      //M-1 * link
-	      res2=Times(copy,lattice[coor][mu],res2,n);
+	      res2=Times(copy,lattice[coor][mu],res2);
 	      //calculate dS (METROPOLIS PART)
 	      double dS=0;
 	      for(int y=0; y<nstap; y++)
 		{
-		  dS+=-beta*1.0/((double)n*1.0)*trace_real(Times(res2,staples[y],res1,n),n);
+		  dS+=-beta*1.0/((double)n*1.0)*trace_real(Times(res2,staples[y],res1));
 		}
 	      //metropolis condition
 	      //printf("dS=%.6f\n",dS);
@@ -485,7 +401,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 		  //printf("accept=%d\n",i);
 		  //printf("ds=%.6f\n",dS);
 		  //double init=calculate_S(lattice,beta,d,spacing,n);
-		  res1=Times(container[ran],lattice[coor][mu],res1,n);
+		  res1=Times(container[ran],lattice[coor][mu],res1);
 		  for(int k=0; k<n*n; k++)
 		    {
 		      lattice[coor][mu][k][0]=res1[k][0];
@@ -500,7 +416,7 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
 		  //printf("dS=%.6f\n",dS);
 		  //printf("accept=%d\n",i);
 		  //double init=calculate_S(lattice,beta,d,spacing,n);
-		  res1=Times(container[ran],lattice[coor][mu],res1,n);
+		  res1=Times(container[ran],lattice[coor][mu],res1);
 		  for(int k=0; k<n*n; k++)
 		    {
 		      lattice[coor][mu][k][0]=res1[k][0];
@@ -545,36 +461,71 @@ double**** update(double**** lattice, double*** container, int n, int d, int spa
   return lattice;
 }
 
-double calculate_S21(double ****lattice, double beta, int d, int spacing, int n)
+double*** findstap(int mu, int mua, int nu, int* x, int coor, int j, double** res1, double** res2, double** newM, double** newM2, double**** lattice, double ***staples, int updown)
 {
-  double S=0;
-  int pow=1;
-  for(int k=0; k<d; k++)
+  if(mu==nu)
     {
-      pow*=(spacing);
+      printf("mu==nu;  fuck\n");
+      exit(EXIT_FAILURE);
     }
-  for(int coor=0; coor<pow; coor++)
+  //increment of the coordinate in the nu direction by one unit
+  int nua=1;
+  for(int r=0; r<nu; r++)
     {
-      for(int mu=0; mu<d; mu++)
-	{
-	  for(int nu=mu+1; nu<d; nu++)
-	    {
-	      double res=0;
-	      res=-beta*plaq21(lattice, coor, mu, nu, n, spacing, d, res);
-	      S+=res;
-	      if(res/beta>1.01 || -res/beta>1.01)
-		{
-		  printf("res=%.6f\n",res);
-		  printf("fuck\n");
-		  exit(EXIT_FAILURE);
-		}
-	    }
-	}
+      nua*=spacing;
     }
-  return S;
+
+  //loopy (periodic bound. cond.) staples part
+  int modup=0;
+  int moddown=0;
+  int sidemod=0;
+  if(x[nu]==spacing-1)
+    {
+      moddown=0;
+      modup=-nua*(spacing);
+    }
+  if(x[nu]==0)
+    {
+      modup=0;
+      moddown=nua*(spacing);
+    }
+  if(x[mu]==(spacing-1))
+    {
+      sidemod=-(spacing)*mua;
+    }
+  //down staple
+  if(updown==0)
+    {
+      testarg(coor+mua-nua+moddown+sidemod);
+      testarg(coor-nua+moddown);
+      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM),dagger(lattice[coor-nua+moddown][mu],newM2),res1);
+      res2=Times(res1,lattice[coor-nua+moddown][nu],res2);
+    }
+  //up staple
+  else if(updown==1)
+    {
+      testarg(coor+nua+modup);
+      testarg(coor+mua+sidemod);
+      res1=Times(dagger(lattice[coor+nua+modup][mu],newM),dagger(lattice[coor][nu],newM2),res1);
+      res2=Times(lattice[coor+mua+sidemod][nu],res1,res2);
+    }
+  else
+    {
+      printf("nonsense argument to findstap(...,updown)\n");
+      exit(EXIT_FAILURE);
+    }
+  //store the result
+  for(int v=0; v<n*n; v++)
+    {
+      staples[j][v][0]=res2[v][0];
+      staples[j][v][1]=res2[v][1];
+    }
+return staples;
 }
 
-double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
+
+
+double calculate_S(double ****lattice)
 {
   double S=0;
   int pow=1;
@@ -591,7 +542,7 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
 	    {
 	      double res=0;
 	      //check1,2,1,2
-	      res=-beta*plaq(lattice, coor, nu, mu, n, spacing, d, res);
+	      res=-beta*plaq(lattice, coor, nu, mu, res);
 	      S+=res;
 	      if(res/beta>1.01 || -res/beta>1.01)
 		{
@@ -605,8 +556,9 @@ double calculate_S(double ****lattice, double beta, int d, int spacing, int n)
   return S;
 }
 
+
 //coordinate,direction of link, index of nxn matrix, real/imag part
-double plaq21(double ****lattice, int coor, int mu, int nu, int n, int spacing,int d, double result=0)
+double plaq(double ****lattice, int coor, int mu, int nu, double result=0)
 {
   //storage for intermediate results
   int *x=(int*)malloc(d*sizeof(int));
@@ -624,7 +576,7 @@ double plaq21(double ****lattice, int coor, int mu, int nu, int n, int spacing,i
       res3[i]=(double*)calloc(2,sizeof(double));
     }
   //coordinate
-  x=findcoord(d, spacing, coor, x);
+  x=findcoord(coor, x);
   //coordinate increments
   int nua=1;
   int mua=1;
@@ -639,34 +591,34 @@ double plaq21(double ****lattice, int coor, int mu, int nu, int n, int spacing,i
   //periodic boundary conditions means the link that sticks out loops around
   if(x[mu]==spacing-1 && x[nu]!=spacing-1)
     {
-      testarg(coor+mua-mua*spacing,d,spacing);
-      testarg(coor+nua,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
+      testarg(coor+mua-mua*spacing);
+      testarg(coor+nua);
+      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1);
+      res2=Times(dagger(lattice[coor+nua][mu],newM),dagger(lattice[coor][nu],newM2),res2);
     }
   else if(x[mu]!=spacing-1 && x[nu]==spacing-1)
     {
-      testarg(coor+mua,d,spacing);
-      testarg(coor+nua-nua*spacing,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
+      testarg(coor+mua);
+      testarg(coor+nua-nua*spacing);
+      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1);
+      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM),dagger(lattice[coor][nu],newM2),res2);
     }
   else if(x[mu]==spacing-1 && x[nu]==spacing-1)
     {
-      testarg(coor+nua-nua*spacing,d,spacing);
-      testarg(coor+mua-mua*spacing,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
+      testarg(coor+nua-nua*spacing);
+      testarg(coor+mua-mua*spacing);
+      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1);
+      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM),dagger(lattice[coor][nu],newM2),res2);
     }
   else
     {
-      testarg(coor+nua,d,spacing);
-      testarg(coor+mua,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
+      testarg(coor+nua);
+      testarg(coor+mua);
+      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1);
+      res2=Times(dagger(lattice[coor+nua][mu],newM),dagger(lattice[coor][nu],newM2),res2);
     }
   //result
-  result=1.0/((double)n*1.0)*trace_real(Times(res1,res2,res3,n),n);
+  result=1.0/((double)n*1.0)*trace_real(Times(res1,res2,res3));
   for(int i=0; i<n*n; i++)
     {
       free(newM[i]);
@@ -684,86 +636,7 @@ double plaq21(double ****lattice, int coor, int mu, int nu, int n, int spacing,i
   return result;
 }
 
-//coordinate,direction of link, index of nxn matrix, real/imag part
-double plaq(double ****lattice, int coor, int mu, int nu, int n, int spacing,int d, double result=0)
-{
-  //storage for intermediate results
-  int *x=(int*)malloc(d*sizeof(int));
-  double **res1=(double**)malloc(n*n*sizeof(double*));
-  double **res2=(double**)malloc(n*n*sizeof(double*));
-  double **res3=(double**)malloc(n*n*sizeof(double*));
-  double **newM=(double**)malloc(n*n*sizeof(double*));
-  double **newM2=(double**)malloc(n*n*sizeof(double*));
-  for(int i=0; i<n*n; i++)
-    {
-      newM[i]=(double*)calloc(2,sizeof(double));
-      newM2[i]=(double*)calloc(2,sizeof(double));
-      res1[i]=(double*)calloc(2,sizeof(double));
-      res2[i]=(double*)calloc(2,sizeof(double));
-      res3[i]=(double*)calloc(2,sizeof(double));
-    }
-  //coordinate
-  x=findcoord(d, spacing, coor, x);
-  //coordinate increments
-  int nua=1;
-  int mua=1;
-  for(int i=0; i<nu; i++)
-    {
-      nua*=spacing;
-    }
-  for(int i=0; i<mu; i++)
-    {
-      mua*=spacing;
-    }
-  //periodic boundary conditions means the link that sticks out loops around
-  if(x[mu]==spacing-1 && x[nu]!=spacing-1)
-    {
-      testarg(coor+mua-mua*spacing,d,spacing);
-      testarg(coor+nua,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
-    }
-  else if(x[mu]!=spacing-1 && x[nu]==spacing-1)
-    {
-      testarg(coor+mua,d,spacing);
-      testarg(coor+nua-nua*spacing,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
-    }
-  else if(x[mu]==spacing-1 && x[nu]==spacing-1)
-    {
-      testarg(coor+nua-nua*spacing,d,spacing);
-      testarg(coor+mua-mua*spacing,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua-mua*spacing][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua-nua*spacing][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
-    }
-  else
-    {
-      testarg(coor+nua,d,spacing);
-      testarg(coor+mua,d,spacing);
-      res1=Times(lattice[coor][mu],lattice[coor+mua][nu],res1,n);
-      res2=Times(dagger(lattice[coor+nua][mu],newM,n),dagger(lattice[coor][nu],newM2, n),res2,n);
-    }
-  //result
-  result=1.0/((double)n*1.0)*trace_real(Times(res1,res2,res3,n),n);
-  for(int i=0; i<n*n; i++)
-    {
-      free(newM[i]);
-      free(newM2[i]);
-      free(res1[i]);
-      free(res2[i]);
-      free(res3[i]);
-    }
-  free(newM);
-  free(newM2);
-  free(res1);
-  free(res2);
-  free(res3);
-  free(x);
-  return result;
-}
-
-double **Times(double** M, double** N, double** res, int n)
+double **Times(double** M, double** N, double** res)
 {
   double* res4=(double*)malloc(2*sizeof(double));
   for(int i=0; i<n; i++)
@@ -784,7 +657,7 @@ double **Times(double** M, double** N, double** res, int n)
   return res;
 }
 
-double trace_img(double **M, int n)
+double trace_img(double **M)
 {
   double sum=0;
   for(int k=0; k<n; k++)
@@ -794,7 +667,7 @@ double trace_img(double **M, int n)
   return sum;
 }
 
-double trace_real(double **M, int n)
+double trace_real(double **M)
 {
   double sum=0;
   for(int k=0; k<n; k++)
@@ -804,7 +677,7 @@ double trace_real(double **M, int n)
   return sum;
 }
 
-double** dagger(double** M, double** newM, int n)
+double** dagger(double** M, double** newM)
 {
   for(int k=0; k<n*n; k++)
     {
@@ -827,7 +700,7 @@ double** dagger(double** M, double** newM, int n)
   return newM;
 }
 
-double**** initialize_lat(int d, int spacing, int n)
+double**** initialize_lat()
 {
   int pow=1;
   for(int k=0; k<d; k++)
@@ -839,7 +712,7 @@ double**** initialize_lat(int d, int spacing, int n)
   int* x=(int*)malloc(d*sizeof(int));
   for(int coor=0; coor<pow; coor++)
     {
-      x=findcoord(d, spacing, coor, x);
+      x=findcoord(coor, x);
       lattice[coor]=(double***)malloc(d*sizeof(double**));
       for(int dir=0; dir<d; dir++)
 	{
@@ -874,7 +747,7 @@ double**** initialize_lat(int d, int spacing, int n)
   return lattice;
 }
 
-int* findcoord(int d, int spacing, int coor, int* x)
+int* findcoord(int coor, int* x)
 {
   int temp=0;
   int coors=coor;
@@ -890,18 +763,12 @@ int* findcoord(int d, int spacing, int coor, int* x)
 int main()
 {
   srand(time(NULL));
-  ////global constants
-  double epsilon=.24;
-  double beta=5.5;
-  //double beta=1;
-  int Ncor=50;
-  int Ncf=100;
   //dimension of matrices (nxn)
-  int n=3;
+  //int n=3;
   //dimensions of lattice d^4: 4x4x4x4 lattice
-  int d=4;
+  //int d=4;
   //spacing=L/a
-  int spacing=8;
+  //int spacing=4;
   
   ////intermediate result storage
   double **res1=(double**)malloc(n*n*sizeof(double*));
@@ -919,14 +786,14 @@ int main()
     }
 
   ////generate 100 SU(3) matrices
-  double ***container=gen_rand_matrix(n,epsilon);
+  double ***container=gen_rand_matrix();
   //return 0;
   //place the daggers of the random SU(3) matrices in the container as well
   container=(double***)realloc(container,2*100*sizeof(double**));
   for(int i=100; i<200; i++)
     {
       container[i]=(double**)malloc(n*n*sizeof(double*));
-      newM=dagger(container[i-100],newM,n);
+      newM=dagger(container[i-100],newM);
       for(int k=0; k<n*n;k++)
 	{
 	  container[i][k]=(double*)malloc(2*sizeof(double));
@@ -939,10 +806,10 @@ int main()
   //double timg=0;
   /*for(int i=0; i<100; i++)
     {
-      treal=1.0/n*trace_real(container[i],n);
-      timg=1.0/n*trace_img(container[i],n);
-      printf("%.6f,%.6f\n",treal,timg);
-      }*/
+    treal=1.0/n*trace_real(container[i],n);
+    timg=1.0/n*trace_img(container[i],n);
+    printf("%.6f,%.6f\n",treal,timg);
+    }*/
   //return 0;
   //print_mat(Times(dagger(container[148],res1,n),container[148],res2,n),n);
   //print_mat(Times(container[148],container[48],res2,n),n);
@@ -960,9 +827,9 @@ int main()
   //return 0;
 
   //initialize the lattice
-  double**** lattice=initialize_lat(d,spacing,n);
+  double**** lattice=initialize_lat();
   //calculate the total number of plaquettes
-  double s2=calculate_S(lattice, beta, d, spacing,n);
+  double s2=calculate_S(lattice);
   double total_plqts=d*(d-1)*pow(spacing,d)*.5;
   //printf("total plqts=%.6f\n", total_plqts);
   //printf("diff=%.6f\n",-s2/beta-total_plqts);
@@ -978,9 +845,9 @@ int main()
     {
       fprintf(pFile,"here we are=%d\n",10*Ncor-i);
       printf("here we are=%d\n",10*Ncor-i);
-      fprintf(pFile,"axa avg=%.6f\n",calculate_S(lattice,-1,d,spacing,n)/total_plqts);
-      printf("axa avg=%.6f\n",calculate_S(lattice,-1,d,spacing,n)/total_plqts);
-      lattice=update(lattice,container,n,d,spacing,beta);
+      fprintf(pFile,"axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
+      printf("axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
+      lattice=update(lattice,container);
     }
 
 
@@ -990,13 +857,13 @@ int main()
   //update the links Ncor times, save S, repeat Ncf-1 times
   for(int i=0; i<Ncf; i++)
     {
-      avg_plqt1=calculate_S(lattice, -1, d, spacing,n)/total_plqts;
+      avg_plqt1=calculate_S(lattice)/total_plqts/(-1*beta);
       //avg_plqt+=avg_plqt/Ncf/total_plqts;
       fprintf(pFile,"avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt1,i);
       printf("avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt1,i);
       for(int j=0; j<Ncor; j++)
 	{
-	  lattice=update(lattice,container,n,d,spacing,beta);
+	  lattice=update(lattice,container);
 	}
     }
 
