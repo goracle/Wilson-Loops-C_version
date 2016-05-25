@@ -36,3 +36,4 @@ double**** initialize_lat();
   
 int* findcoord(int coor, int* x);
 
+int increment(int mu);

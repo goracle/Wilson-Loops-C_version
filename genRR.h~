@@ -1,0 +1,76 @@
+double** minors(double **M, int nn, int row, int column, double** minorr)
+{
+
+  int newstart=0;
+  for(int i=0; i<(n-1)*(n-1); i++)
+    {
+      for(int j=newstart; j<n*n; j++)
+	{
+	  if(j%n==column || j/n==row)
+	    {
+	      continue;
+	    }
+	  minorr[i][1]=M[j][1];
+	  minorr[i][0]=M[j][0];
+	  newstart=j+1;
+	  break;
+	}
+    }
+  return minorr;
+}
+
+double* getdet(double** M, int nn, double* temp_fin)
+{
+  for(int column=0; column<n; column++)
+    {
+      if(n==2)
+	{
+	  double* z=(double*)calloc(2,sizeof(double));
+	  double* t=(double*)calloc(2,sizeof(double));
+	  z=times(M[1],M[2],z);
+	  t=times(M[0],M[3],t);
+	  temp_fin[0]=t[0]-z[0];
+	  temp_fin[1]=t[1]-z[1];
+	  free(z);
+	  free(t);
+	}
+      else
+	{
+	  double y=-1.0;
+	  double **minorr=(double**)malloc((n-1)*(n-1)*sizeof(double*));
+	  for(int g=0; g<(n-1)*(n-1); g++)
+	    {
+	      minorr[g]=(double*)malloc(2*sizeof(double));
+	    }
+	  minorr=minors(M,n,0,column,minorr);
+	  double* subdet=(double*)calloc(2,sizeof(double));
+	  double* x=(double*)calloc(2,sizeof(double));
+	  subdet=getdet(minorr,n-1,subdet);
+	  x=times(M[column],subdet,x);
+	  free(subdet);
+	  for(int g=0; g<(n-1)*(n-1); g++)
+	    {
+	      free(minorr[g]);
+	    }
+	  free(minorr);
+	  temp_fin[0]+=pow(y,column)*x[0];
+	  temp_fin[1]+=pow(y,column)*x[1];
+	  free(x);
+	}
+    }
+  return temp_fin;
+}
+
+double getnorm(double** M, int col=0)
+{
+  double rsum=0;
+  double sum=0;
+  for(int row=0; row<n; row++)
+    {
+      //printf("(a,b)=%.6f+I %.6f\n", R[n*row+col],I[n*row+col]);
+      rsum+=pow(M[n*row+col][0],2)+pow(M[n*row+col][1],2);
+      //printf("quantity we are adding=%.6f\n",(pow(R[n*row+col],2)+pow(I[n*row+col],2)));
+    }
+  sum=pow(rsum,.5);
+  return sum;
+}
