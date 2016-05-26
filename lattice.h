@@ -204,7 +204,7 @@ double*** findstap(int mu, int mua, int nu, int* x, int coor, int j, double** re
     }
   else
     {
-      printf("nonsense argument to findstap(...,updown)\n");
+      printf("nonsense argument to findstap(...,updown=%d)\n",updown);
       exit(EXIT_FAILURE);
     }
   //store the result

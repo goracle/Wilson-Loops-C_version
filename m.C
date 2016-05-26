@@ -7,7 +7,9 @@
 #define spacing 8
 #define d 4
 #define epsilon 0.24
-#define beta 5.5
+//#define beta 5.5
+#define beta 1.719
+#define u0 0.797
 #define Ncor 50
 #define Ncf 100
 //storage of functions related to SU(3) matrix generator
@@ -18,6 +20,9 @@
 #include "miscutil.h"
 //update lattice, calculate S
 #include "lattice.h"
+#include "lattice_rect.h"
+//functions to calculate average Wilson loops
+#include "avgWil.h"
 
 int main()
 {
@@ -100,29 +105,41 @@ int main()
   //for(int i=0; i<10*Ncor; i++)
   FILE * pFile;
   pFile=fopen ("results.txt","w");
+  double avg_plqt1=0;
+  double avg_plqt_rect1=0;
   for(int i=0; i<10*Ncor; i++)
     {
       fprintf(pFile,"here we are=%d\n",10*Ncor-i);
       printf("here we are=%d\n",10*Ncor-i);
-      fprintf(pFile,"axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
-      printf("axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
-      lattice=update(lattice,container);
+      //fprintf(pFile,"axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
+      avg_plqt1=avg_plqt(lattice);
+      avg_plqt_rect1=avg_plqt_rect(lattice);
+      fprintf(pFile,"axa avg=%.6f\n",avg_plqt1);
+      fprintf(pFile,"2axa avg=%.6f\n",avg_plqt_rect1);
+      //printf("axa avg=%.6f\n",calculate_S(lattice)/total_plqts/(-1*beta));
+      printf("axa avg=%.6f\n",avg_plqt1);
+      printf("2axa avg=%.6f\n",avg_plqt_rect1);
+      //lattice=update(lattice,container);
+      lattice=update_rect(lattice,container);
     }
 
 
   //calculate the average plaquette, store it
-  //double avg_plqt=0;
-  double avg_plqt1=0;
   //update the links Ncor times, save S, repeat Ncf-1 times
   for(int i=0; i<Ncf; i++)
     {
-      avg_plqt1=calculate_S(lattice)/total_plqts/(-1*beta);
+      //avg_plqt1=calculate_S(lattice)/total_plqts/(-1*beta);
+      avg_plqt1=avg_plqt(lattice);
+      avg_plqt_rect1=avg_plqt_rect(lattice);
       //avg_plqt+=avg_plqt/Ncf/total_plqts;
       fprintf(pFile,"avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt1,i);
+      fprintf(pFile,"avg_plqt(2axa)(path number)=(%.6f)(%d)\n",avg_plqt_rect1,i);
       printf("avg_plqt(axa)(path number)=(%.6f)(%d)\n",avg_plqt1,i);
+      printf("avg_plqt(2axa)(path number)=(%.6f)(%d)\n",avg_plqt_rect1,i);
       for(int j=0; j<Ncor; j++)
 	{
-	  lattice=update(lattice,container);
+	  //lattice=update(lattice,container);
+	  lattice=update_rect(lattice,container);
 	}
     }
 

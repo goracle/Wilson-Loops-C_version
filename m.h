@@ -37,3 +37,18 @@ double**** initialize_lat();
 int* findcoord(int coor, int* x);
 
 int increment(int mu);
+
+double**** update_rect(double**** lattice, double*** container);
+
+double*** findstap_rect(int mu, int mua, int nu, int* x, int coor, int j, double** res1, double** res11, double** res2, double** newM, double** newM2, double**** lattice, double ***staples, int updown);
+
+double calculate_S_rect(double ****lattice);
+
+double plaq_rect(double ****lattice, int coor, int mu, int nu, double result=0);
+
+double avg_plqt(double**** lattice);
+
+double avg_plqt_rect(double**** lattice);
+
+double plaq_rect1(double ****lattice, int coor, int mu, int nu, double result);
+
