@@ -16,10 +16,10 @@ def read_data(filename):
             x+=1
             if(x%2==0):
                 y=line[29:36]
-                data1_org.append(float(y))
+                data2_org.append(float(y))
             else:
                 y=line[28:36]
-                data2_org.append(float(y))
+                data1_org.append(float(y))
             #data1_org.append(float(y))
         #data_org_z.append(float(z))
          #print type(line)
@@ -40,7 +40,7 @@ therm_itr = 1500;
 sweep_itr = 50;
 
 
-x,axa,2axa = read_data('results.txt')
+x,axa,taxa = read_data('results.txt')
 #print(y)
 #print(z)
 #plt.scatter(y,z)
@@ -53,6 +53,6 @@ print x
 mean, std = mean_data(axa)
 print "axa=(mean,std)"
 print mean, std
-mean, std = mean_data(2axa)
+mean, std = mean_data(taxa)
 print "2axa=(mean,std)"
 print mean, std
