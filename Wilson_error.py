@@ -5,7 +5,8 @@ import numpy as np
 import pylab as pl
 
 def read_data(filename):
-    data_org = []
+    data1_org = []
+    data2_org = []
     #data_org_z = []
 
     data = open(filename, 'r')
@@ -13,11 +14,16 @@ def read_data(filename):
     for line in data:
         if len(line)>26:
             x+=1
-            y=line[28:36]
-            data_org.append(float(y))
+            if(x%2==0):
+                y=line[29:36]
+                data1_org.append(float(y))
+            else:
+                y=line[28:36]
+                data2_org.append(float(y))
+            #data1_org.append(float(y))
         #data_org_z.append(float(z))
          #print type(line)
-    return np.array(data_org),x
+    return x,np.array(data1_org),np.array(data2_org)
 
 def remanage_data(data_org, therm_itr, sweep_itr):
     data = []
@@ -34,7 +40,7 @@ therm_itr = 1500;
 sweep_itr = 50;
 
 
-data,x = read_data('results.txt')
+x,axa,2axa = read_data('results.txt')
 #print(y)
 #print(z)
 #plt.scatter(y,z)
@@ -44,5 +50,9 @@ data,x = read_data('results.txt')
 #print data
 print x
 
-mean, std = mean_data(data)
+mean, std = mean_data(axa)
+print "axa=(mean,std)"
+print mean, std
+mean, std = mean_data(2axa)
+print "2axa=(mean,std)"
 print mean, std

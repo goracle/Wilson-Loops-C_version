@@ -169,38 +169,23 @@ double*** findstap(int mu, int mua, int nu, int* x, int coor, int j, double** re
   //increment of the coordinate in the nu direction by one unit
   int nua=increment(nu);
   //loopy (periodic bound. cond.) staples part
-  int modup=0;
-  int moddown=0;
-  int sidemod=0;
-  if(x[nu]==spacing-1)
-    {
-      moddown=0;
-      modup=-nua*(spacing);
-    }
-  if(x[nu]==0)
-    {
-      modup=0;
-      moddown=nua*(spacing);
-    }
-  if(x[mu]==(spacing-1))
-    {
-      sidemod=-(spacing)*mua;
-    }
+  int* modsv=(int*)malloc(3*sizeof(int));
+  modsv=mods(coor,mu,nu,modsv);
   //down staple
   if(updown==0)
     {
-      testarg(coor+mua-nua+moddown+sidemod);
-      testarg(coor-nua+moddown);
-      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM),dagger(lattice[coor-nua+moddown][mu],newM2),res1);
-      res2=Times(res1,lattice[coor-nua+moddown][nu],res2);
+      testarg(coor+mua-nua+modsv[1]+modsv[2]);
+      testarg(coor-nua+modsv[1]);
+      res1=Times(dagger(lattice[coor+mua-nua+modsv[1]+modsv[2]][nu],newM),dagger(lattice[coor-nua+modsv[1]][mu],newM2),res1);
+      res2=Times(res1,lattice[coor-nua+modsv[1]][nu],res2);
     }
   //up staple
   else if(updown==1)
     {
-      testarg(coor+nua+modup);
-      testarg(coor+mua+sidemod);
-      res1=Times(dagger(lattice[coor+nua+modup][mu],newM),dagger(lattice[coor][nu],newM2),res1);
-      res2=Times(lattice[coor+mua+sidemod][nu],res1,res2);
+      testarg(coor+nua+modsv[0]);
+      testarg(coor+mua+modsv[2]);
+      res1=Times(dagger(lattice[coor+nua+modsv[0]][mu],newM),dagger(lattice[coor][nu],newM2),res1);
+      res2=Times(lattice[coor+mua+modsv[2]][nu],res1,res2);
     }
   else
     {
@@ -213,7 +198,8 @@ double*** findstap(int mu, int mua, int nu, int* x, int coor, int j, double** re
       staples[j][v][0]=res2[v][0];
       staples[j][v][1]=res2[v][1];
     }
-return staples;
+  free(modsv);
+  return staples;
 }
 
 

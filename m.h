@@ -50,5 +50,6 @@ double avg_plqt(double**** lattice);
 
 double avg_plqt_rect(double**** lattice);
 
-double plaq_rect1(double ****lattice, int coor, int mu, int nu, double result);
+//double plaq_rect1(double ****lattice, int coor, int mu, int nu, double result);
 
+int* mods(int coor, int mu, int nu, int* results);

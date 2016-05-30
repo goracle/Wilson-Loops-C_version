@@ -1,3 +1,4 @@
+//update with the improved action
 double**** update_rect(double**** lattice, double*** container)
 {
   //int accept=0;
@@ -12,6 +13,12 @@ double**** update_rect(double**** lattice, double*** container)
   double **res2=(double**)malloc(n*n*sizeof(double*));
   double **newM=(double**)malloc(n*n*sizeof(double*));
   double **newM2=(double**)malloc(n*n*sizeof(double*));
+  //storage for findstap_rect test
+  /*  //mods for periodic boundary conditions
+   int* modsv=(int*)malloc(3*sizeof(int));
+  //misc stack vars
+  double resr=0;
+  double diff=0;*/
   for(int i=0; i<n*n; i++)
     {
       copy[i]=(double*)calloc(2,sizeof(double));
@@ -63,6 +70,7 @@ double**** update_rect(double**** lattice, double*** container)
 	      //can't have xx or yy plane, clearly nonsense
 	      if(mu==nu)
 		continue;
+	      //modsv=mods(coor,mu,nu,modsv);
 	      int stap_start=nstap;
 	      int stap_start1=nstap1;
 	      //due to periodic boundary conditions
@@ -71,11 +79,42 @@ double**** update_rect(double**** lattice, double*** container)
 	      nstap+=2;
 	      //index of staples to store the new staples of the mu,nu plane
 	      //j is our starting index
+	      int nua=increment(nu);
 	      for(int j=stap_start1; j<nstap1; j++)
 		{
 		  //printf("j=%d, stap_start1=%d, nstap1=%d \n",j,stap_start1,nstap1);
 		  staples1=findstap_rect(mu,mua,nu,x,coor,j,res1,res11,res2,newM,newM2,lattice,staples1,j-stap_start1);
-		  
+		  //test for rect staples
+		  /*		  if(j-stap_start1==0)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor-nua+modsv[1],nu,mu,resr);
+		    }
+		  if(j-stap_start1==1)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor+mua+modsv[2]-nua+modsv[1],nu,mu,resr);
+		    }
+		  if(j-stap_start1==2)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor-nua+modsv[1],mu,nu,resr);
+		    }
+		  if(j-stap_start1==3)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor,nu,mu,resr);
+		    }
+		  if(j-stap_start1==4)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor+mua+modsv[2],nu,mu,resr);
+		    }
+		  if(j-stap_start1==5)
+		    {
+		      diff=1.0/((double)n)*trace_real(Times(staples1[j],lattice[coor][mu],res1))-plaq_rect(lattice,coor+nua+modsv[0],mu,nu,resr);
+		    }
+		  if((diff>0.0000000001 || diff<-0.0000000001) && (j-stap_start1!=4))
+			{
+			  printf("diff=%.6f, staple=%d\n", diff,j-stap_start1);
+			  exit(EXIT_FAILURE);
+			}
+		  */
 		}
 	      for(int j=stap_start; j<nstap; j++)
 		{
@@ -111,7 +150,7 @@ double**** update_rect(double**** lattice, double*** container)
 	      double dS=0;
 	      for(int y=0; y<nstap1; y++)
 		{
-		  dS+=beta*1.0/((double)n*1.0)/((double)pow((double)u0,6.0))/12.0*trace_real(Times(res2,staples1[y],res1));
+		 dS+=beta*1.0/((double)n*1.0)/((double)pow((double)u0,6.0))/12.0*trace_real(Times(res2,staples1[y],res1));
 		}
 	      for(int y=0; y<nstap; y++)
 		{
@@ -121,6 +160,8 @@ double**** update_rect(double**** lattice, double*** container)
 	      //printf("dS=%.6f\n",dS);
 	      if(dS<0)
 		{
+		  //printf("dS,from staples=%.6f\n",dS);
+		  //double init=calculate_S_rect(lattice);
 		  //accept++;
 		  //printf("accept=%d\n",i);
 		  //printf("ds=%.6f\n",dS);
@@ -131,6 +172,7 @@ double**** update_rect(double**** lattice, double*** container)
 		      lattice[coor][mu][k][0]=res1[k][0];
 		      lattice[coor][mu][k][1]=res1[k][1];
 		    }
+		  //printf("dS,from S_calc=%.6f\n",calculate_S_rect(lattice)-init);
 		  //printf("ds22222=%.6f\n",calculate_S(lattice,beta,d,spacing,n)-init);
 		}
 	      else if(dS>0 && exp(-dS)>ran2)
@@ -166,6 +208,14 @@ double**** update_rect(double**** lattice, double*** container)
 	}
       free(staples[j]);
     }
+  for(int j=0; j<(d-1)*6; j++)
+    {
+      for(int i=0; i<n*n; i++)
+	{
+	  free(staples1[j][i]);
+	}
+      free(staples1[j]);
+    }
   for(int i=0; i<n*n; i++)
     {
       free(newM[i]);
@@ -175,6 +225,7 @@ double**** update_rect(double**** lattice, double*** container)
       free(res2[i]);
       free(copy[i]);
     }
+  // free(modsv);
   free(copy);
   free(res1);
   free(res11);
@@ -182,8 +233,10 @@ double**** update_rect(double**** lattice, double*** container)
   free(newM2);
   free(newM);
   free(staples);
+  free(staples1);
   free(x);
   //printf("ratio=(accept,reject)=%d,%d\n",accept,reject);
+  //exit(EXIT_SUCCESS);
   return lattice;
 }
 
@@ -199,78 +252,63 @@ double*** findstap_rect(int mu, int mua, int nu, int* x, int coor, int j, double
   //increment of the coordinate in the nu direction by one unit
   int nua=increment(nu);
   //loopy (periodic bound. cond.) staples part
-  int modup=0;
-  int moddown=0;
-  int sidemod=0;
-  if(x[nu]==spacing-1)
-    {
-      moddown=0;
-      modup=-nua*(spacing);
-    }
-  if(x[nu]==0)
-    {
-      modup=0;
-      moddown=nua*(spacing);
-    }
-  if(x[mu]==(spacing-1))
-    {
-      sidemod=-(spacing)*mua;
-    }
+  int* modsv=(int*)malloc(3*sizeof(int));
+  modsv=mods(coor,mu,nu,modsv);
   //down staples
   if(updown==0)
     {
-      testarg(coor+mua-nua+moddown+sidemod);
-      testarg(coor-nua+moddown);
-      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM),dagger(lattice[coor-nua+moddown][mu],newM2),res1);
-      y=findcoord(coor-nua+moddown,y);
-      staples=findstap(nu,nua,mu,y,coor-nua+moddown,j,res11,res2,newM,newM2,lattice,staples,0);
+      testarg(coor+mua-nua+modsv[2]+modsv[1]);
+      testarg(coor-nua+modsv[1]);
+      res1=Times(dagger(lattice[coor+mua-nua+modsv[1]+modsv[2]][nu],newM),dagger(lattice[coor-nua+modsv[1]][mu],newM2),res1);
+      y=findcoord(coor-nua+modsv[1],y);
+      staples=findstap(nu,nua,mu,y,coor-nua+modsv[1],j,res11,res2,newM,newM2,lattice,staples,0);
       res2=Times(res1,dagger(staples[j],newM2),res2);
     }
   else if(updown==1)
     {
-      testarg(coor+mua-nua+moddown+sidemod);
-      testarg(coor-nua+moddown);
-      res1=Times(dagger(lattice[coor+mua-nua+moddown+sidemod][nu],newM),dagger(lattice[coor-nua+moddown][mu],newM2),res1);
-      y=findcoord(coor-nua+moddown+mua+sidemod,y);
-      staples=findstap(nu,nua,mu,y,coor-nua+mua+moddown+sidemod,j,res11,res2,newM,newM2,lattice,staples,1);
+      testarg(coor+mua-nua+modsv[1]+modsv[2]);
+      testarg(coor-nua+modsv[1]);
+      //end testargs
+      res1=Times(dagger(lattice[coor-nua+modsv[1]][mu],newM),lattice[coor-nua+modsv[1]][nu],res1);
+      y=findcoord(coor-nua+modsv[1]+mua+modsv[2],y);
+      staples=findstap(nu,nua,mu,y,coor-nua+mua+modsv[1]+modsv[2],j,res11,res2,newM,newM2,lattice,staples,1);
       res2=Times(staples[j],res1,res2);
     }
   else if(updown==2)
     {
-      testarg(coor+mua-nua+moddown+sidemod);
-      testarg(coor-nua+moddown);
-      y=findcoord(coor-nua+moddown,y);
-      staples=findstap(mu,mua,nu,y,coor-nua+moddown,j,res11,res2,newM,newM2,lattice,staples,0);
-      res1=Times(dagger(lattice[coor+mua-nua+sidemod+moddown][nu],newM2),staples[j],res1);
-      res2=Times(res1,lattice[coor-nua+moddown][nu],res2);
+      testarg(coor+mua-nua+modsv[1]+modsv[2]);
+      testarg(coor-nua+modsv[1]);
+      y=findcoord(coor-nua+modsv[1],y);
+      staples=findstap(mu,mua,nu,y,coor-nua+modsv[1],j,res11,res2,newM,newM2,lattice,staples,0);
+      res1=Times(dagger(lattice[coor+mua-nua+modsv[2]+modsv[1]][nu],newM2),staples[j],res1);
+      res2=Times(res1,lattice[coor-nua+modsv[1]][nu],res2);
     }
   //up staples
   else if(updown==3)
     {
-      testarg(coor+nua+modup);
-      testarg(coor+mua+sidemod);
-      //y=findcoord(coor-nua+moddown,y);
-      //x suffices
-      staples=findstap(nu,nua,mu,x,coor,j,res1,res2,newM,newM2,lattice,staples,0);
-      res1=Times(dagger(lattice[coor+nua+modup][mu],newM),staples[j],res1);
-      res2=Times(lattice[coor+mua+sidemod][nu],res1,res2);
+      testarg(coor+nua+modsv[0]);
+      testarg(coor+mua+modsv[2]);
+      y=findcoord(coor,y);
+      staples=findstap(nu,nua,mu,y,coor,j,res1,res2,newM,newM2,lattice,staples,0);
+      res1=Times(dagger(lattice[coor+nua+modsv[0]][mu],newM),staples[j],res1);
+      res2=Times(lattice[coor+mua+modsv[2]][nu],res1,res2);
     }
  else if(updown==4)
    {
-      testarg(coor+nua+modup);
-      testarg(coor+mua+sidemod);
-      res1=Times(dagger(lattice[coor+nua+modup][mu],newM),dagger(lattice[coor][nu],newM2),res1);
-      y=findcoord(coor+mua+sidemod,y);
-      staples=findstap(nu,nua,mu,y,coor+mua+sidemod,j,res1,res2,newM,newM2,lattice,staples,1);
-      res2=Times(staples[j],res1,res2);
+      testarg(coor+nua+modsv[0]);
+      testarg(coor+mua+modsv[2]);
+      res1=Times(dagger(lattice[coor+nua+modsv[0]][mu],newM),dagger(lattice[coor][nu],newM2),res1);
+      y=findcoord(coor+mua+modsv[2],y);
+      staples=findstap(nu,nua,mu,y,coor+mua+modsv[2],j,res11,res2,newM,newM2,lattice,staples,1);
+      res2=Times(dagger(staples[j],newM),res1,res2);
    }
  else if(updown==5)
    {
-      testarg(coor+nua+modup);
-      testarg(coor+mua+sidemod);
-      y=findcoord(coor+nua+modup,y);
-      staples=findstap(mu,mua,nu,y,coor+nua+modup,j,res1,res2,newM,newM2,lattice,staples,1);
-      res1=Times(lattice[coor+mua+sidemod][nu],staples[j],res1);
+      testarg(coor+nua+modsv[0]);
+      testarg(coor+mua+modsv[2]);
+      y=findcoord(coor+nua+modsv[0],y);
+      staples=findstap(mu,mua,nu,y,coor+nua+modsv[0],j,res1,res2,newM,newM2,lattice,staples,1);
+      res1=Times(lattice[coor+mua+modsv[2]][nu],staples[j],res1);
       res2=Times(res1,dagger(lattice[coor][nu],newM),res2);
    }
   else
@@ -285,6 +323,7 @@ double*** findstap_rect(int mu, int mua, int nu, int* x, int coor, int j, double
       staples[j][v][1]=res2[v][1];
     }
   free(y);
+  free(modsv);
   return staples;
 }
 
@@ -371,7 +410,9 @@ double plaq_rect(double ****lattice, int coor, int mu, int nu, double result)
   return result;
 }
 
+//unused code below
 //coordinate,direction of link, index of nxn matrix, real/imag part
+/*
 double plaq_rect1(double ****lattice, int coor, int mu, int nu, double result)
 {
   //storage for intermediate results
@@ -447,3 +488,4 @@ double plaq_rect1(double ****lattice, int coor, int mu, int nu, double result)
   free(x);
   return result;
 }
+*/

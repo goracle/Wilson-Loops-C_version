@@ -42,3 +42,35 @@ int* findcoord(int coor, int* x)
 }
 
 
+int* mods(int coor, int mu, int nu, int* results)
+{
+  int* x=(int*)malloc(d*sizeof(int)); 
+  x=findcoord(coor,x);
+  int mua=increment(mu);
+  int nua=increment(nu);
+  //mnemonic=Konami code
+  //upmod
+  if(x[nu]==spacing-1)
+    {
+      results[0]=-nua*spacing;
+    }
+  else
+    results[0]=0;
+  //downmod
+  if(x[nu]==0)
+    {
+      results[1]=nua*spacing; 
+    }
+  else
+    results[1]=0;
+  //sidemod
+  if(x[mu]==spacing-1)
+    {
+      results[2]=-mua*spacing; 
+    }
+  else
+    results[2]=0;
+  //b a...
+  free(x);
+  return results;
+}
